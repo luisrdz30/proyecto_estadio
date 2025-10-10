@@ -1,0 +1,30 @@
+name: proyecto_estadio
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_native_splash: ^2.4.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/logo_estadio_sin_fondo.png
+
+flutter_native_splash:
+  color: "#ffffff" # fondo blanco, cámbialo si quieres
+  image: assets/images/logo_estadio_sin_fondo.png
+  android: true
+  ios: true
