@@ -1,11 +1,47 @@
 import 'package:flutter/material.dart';
-import 'calendar_screen.dart';
+import '../models/event.dart';
+import 'event_card.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final bool isDarkMode;
+  final ValueChanged<bool> onThemeChanged;
+
+  const HomeScreen({
+    super.key,
+    required this.isDarkMode,
+    required this.onThemeChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
+    // 🔥 Ejemplo de datos dummy (luego vendrán de Firebase)
+    final List<Event> events = [
+      Event(
+        title: "Concierto Rock Fest",
+        date: "25 Octubre 2025",
+        place: "Estadio Olímpico",
+        image: "https://picsum.photos/400/200?random=1",
+        description: "Un concierto con las mejores bandas de rock.",
+        price: 50.0,
+      ),
+      Event(
+        title: "Partido Final Copa",
+        date: "30 Octubre 2025",
+        place: "Coliseo Central",
+        image: "https://picsum.photos/400/200?random=2",
+        description: "La gran final de la Copa Nacional.",
+        price: 30.0,
+      ),
+      Event(
+        title: "Obra de Teatro",
+        date: "5 Noviembre 2025",
+        place: "Teatro Nacional",
+        image: "https://picsum.photos/400/200?random=3",
+        description: "Una obra clásica con actores reconocidos.",
+        price: 25.0,
+      ),
+    ];
+
     return Scaffold(
       drawer: Drawer(
         child: ListView(
@@ -42,6 +78,13 @@ class HomeScreen extends StatelessWidget {
               },
             ),
             const Divider(),
+            SwitchListTile(
+              title: const Text("Modo oscuro"),
+              secondary: const Icon(Icons.dark_mode),
+              value: isDarkMode,
+              onChanged: onThemeChanged,
+            ),
+            const Divider(),
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text("Cerrar sesión"),
@@ -55,135 +98,13 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Eventos"),
         backgroundColor: Colors.deepPurple,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CalendarScreen()),
-              );
-            },
-          ),
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.shopping_cart),
-                onPressed: () {
-                  // Aquí luego iremos a la pantalla del carrito
-                },
-              ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Text(
-                    "2", // más adelante será dinámico
-                    style: TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ),
-              )
-            ],
-          )
-        ],
       ),
-      body: ListView(
+      body: ListView.builder(
         padding: const EdgeInsets.all(16.0),
-        children: const [
-          EventCard(
-            title: "Concierto Rock Fest",
-            date: "25 Octubre 2025",
-            place: "Estadio Olímpico",
-            image: "https://picsum.photos/400/200?random=1",
-          ),
-          EventCard(
-            title: "Partido Final Copa",
-            date: "30 Octubre 2025",
-            place: "Coliseo Central",
-            image: "https://picsum.photos/400/200?random=2",
-          ),
-          EventCard(
-            title: "Obra de Teatro",
-            date: "5 Noviembre 2025",
-            place: "Teatro Nacional",
-            image: "https://picsum.photos/400/200?random=3",
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class EventCard extends StatelessWidget {
-  final String title;
-  final String date;
-  final String place;
-  final String image;
-
-  const EventCard({
-    super.key,
-    required this.title,
-    required this.date,
-    required this.place,
-    required this.image,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 6,
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(15)),
-            child: Image.network(
-              image,
-              fit: BoxFit.cover,
-              height: 180,
-              width: double.infinity,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
-                Text(date, style: const TextStyle(color: Colors.grey)),
-                Text(place, style: const TextStyle(color: Colors.grey)),
-                const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Aquí más adelante: pantalla de detalles del evento
-                    },
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple),
-                    child: const Text(
-                      "Ver más",
-                      style: TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                )
-              ],
-            ),
-          )
-        ],
+        itemCount: events.length,
+        itemBuilder: (context, index) {
+          return EventCard(event: events[index]);
+        },
       ),
     );
   }
