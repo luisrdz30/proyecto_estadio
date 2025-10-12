@@ -47,7 +47,7 @@ class AboutScreen extends StatelessWidget {
                     "Creemos en el poder de los eventos para unir a la comunidad y crear recuerdos inolvidables.",
                     style: theme.textTheme.bodyMedium?.copyWith(
                       height: 1.5,
-                      color: theme.colorScheme.onBackground.withOpacity(0.9),
+                      color: theme.colorScheme.onSurface.withOpacity(0.9),
                     ),
                   ),
                 ],

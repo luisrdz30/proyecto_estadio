@@ -47,10 +47,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   shape: BoxShape.circle,
                 ),
                 defaultTextStyle: TextStyle(
-                  color: theme.colorScheme.onBackground,
+                  color: theme.colorScheme.onSurface,
                 ),
                 weekendTextStyle: TextStyle(
-                  color: theme.colorScheme.onBackground.withOpacity(0.7),
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
               headerStyle: HeaderStyle(
@@ -59,12 +59,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 titleTextStyle: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onBackground,
+                  color: theme.colorScheme.onSurface,
                 ),
                 leftChevronIcon: Icon(Icons.chevron_left,
-                    color: theme.colorScheme.onBackground),
+                    color: theme.colorScheme.onSurface),
                 rightChevronIcon: Icon(Icons.chevron_right,
-                    color: theme.colorScheme.onBackground),
+                    color: theme.colorScheme.onSurface),
               ),
             ),
             const SizedBox(height: 20),
@@ -75,7 +75,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         "Selecciona una fecha para ver eventos",
                         style: TextStyle(
                           fontSize: 16,
-                          color: theme.colorScheme.onBackground.withOpacity(0.6),
+                          color: theme.colorScheme.onSurface.withOpacity(0.6),
                         ),
                       )
                     : Text(
@@ -83,7 +83,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onBackground,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
               ),

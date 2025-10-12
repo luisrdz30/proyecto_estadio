@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "829426376519",
+    "project_id": "proyecto-estadio",
+    "storage_bucket": "proyecto-estadio.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:829426376519:android:073186d8ca797aacfff662",
+        "android_client_info": {
+          "package_name": "com.estadio.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCR00NsRdiRcVqggQWL93DhxV4K39fFNgk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

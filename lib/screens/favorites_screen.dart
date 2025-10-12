@@ -23,7 +23,7 @@ class FavoritesScreen extends StatelessWidget {
                 "No tienes eventos en favoritos ❤️",
                 style: TextStyle(
                   fontSize: 16,
-                  color: theme.colorScheme.onBackground.withOpacity(0.6),
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
                 ),
               ),
             )

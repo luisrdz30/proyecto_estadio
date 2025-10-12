@@ -49,7 +49,7 @@ class EventCard extends StatelessWidget {
                           const TextStyle(fontSize: 18))
                       .copyWith(
                     fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onBackground,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -58,7 +58,7 @@ class EventCard extends StatelessWidget {
                   style: (theme.textTheme.bodyMedium ??
                           const TextStyle(fontSize: 14))
                       .copyWith(
-                    color: theme.colorScheme.onBackground.withOpacity(0.7),
+                    color: theme.colorScheme.onSurface.withOpacity(0.7),
                   ),
                 ),
                 const SizedBox(height: 10),

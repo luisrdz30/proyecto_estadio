@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:proyecto_estadio/screens/home_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'screens/home_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
@@ -20,9 +26,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       title: 'Proyecto Estadio',
       debugShowCheckedModeBanner: false,
-      theme: _lightTheme,
-      darkTheme: _darkTheme,
-      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      theme: _isDarkMode ? _darkTheme : _lightTheme,
       home: HomeScreen(
         isDarkMode: _isDarkMode,
         onThemeChanged: (value) {
@@ -35,28 +39,21 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-// 🎨 Azul eléctrico definido
-const Color electricBlue = Color(0xFF2979FF); // tono fuerte de azul
-
-// 🌞 Tema claro
+// 🎨 Tema claro
 final ThemeData _lightTheme = ThemeData(
   brightness: Brightness.light,
-  colorScheme: const ColorScheme.light(
-    primary: electricBlue,
-    secondary: electricBlue,
-    surface: Colors.white,
-    onPrimary: Colors.white,   // texto sobre botones azules
-    onSurface: Colors.black, // texto normal sobre fondo blanco
+  primaryColor: const Color(0xFFBB86FC),
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: const Color(0xFFBB86FC),
+    brightness: Brightness.light,
   ),
-  scaffoldBackgroundColor: Colors.white,
-  cardColor: Colors.white, // 🔑 asegura contraste de tarjetas
   appBarTheme: const AppBarTheme(
-    backgroundColor: electricBlue,
+    backgroundColor: Color(0xFFBB86FC),
     foregroundColor: Colors.white,
   ),
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
-      backgroundColor: electricBlue,
+      backgroundColor: Color(0xFFBB86FC),
       foregroundColor: Colors.white,
       textStyle: const TextStyle(fontWeight: FontWeight.bold),
       minimumSize: const Size(double.infinity, 50),
@@ -70,22 +67,18 @@ final ThemeData _lightTheme = ThemeData(
 // 🌙 Tema oscuro
 final ThemeData _darkTheme = ThemeData(
   brightness: Brightness.dark,
-  colorScheme: const ColorScheme.dark(
-    primary: electricBlue,
-    secondary: electricBlue,
-    surface: Colors.black,
-    onPrimary: Colors.white,   // 🔑 corregido: texto blanco sobre azul
-    onSurface: Colors.white, // texto normal sobre fondo oscuro
+  primaryColor: const Color(0xFFBB86FC),
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: const Color(0xFFBB86FC),
+    brightness: Brightness.dark,
   ),
-  scaffoldBackgroundColor: Colors.black,
-  cardColor: Color(0xFF1E1E1E), // 🔑 tarjetas gris oscuro para contraste
   appBarTheme: const AppBarTheme(
-    backgroundColor: Colors.black,
+    backgroundColor: Color(0xFF121212),
     foregroundColor: Colors.white,
   ),
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
-      backgroundColor: electricBlue,
+      backgroundColor: Color(0xFFBB86FC),
       foregroundColor: Colors.white,
       textStyle: const TextStyle(fontWeight: FontWeight.bold),
       minimumSize: const Size(double.infinity, 50),
