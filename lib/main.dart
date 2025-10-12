@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
+import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 
 void main() async {
@@ -27,12 +29,31 @@ class _MyAppState extends State<MyApp> {
       title: 'Proyecto Estadio',
       debugShowCheckedModeBanner: false,
       theme: _isDarkMode ? _darkTheme : _lightTheme,
-      home: HomeScreen(
-        isDarkMode: _isDarkMode,
-        onThemeChanged: (value) {
-          setState(() {
-            _isDarkMode = value;
-          });
+      // 👇 Aquí controlamos si el usuario ya tiene sesión iniciada
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          // Mientras Firebase carga el estado:
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          // Si el usuario está logueado:
+          if (snapshot.hasData) {
+            return HomeScreen(
+              isDarkMode: _isDarkMode,
+              onThemeChanged: (value) {
+                setState(() {
+                  _isDarkMode = value;
+                });
+              },
+            );
+          }
+
+          // Si no hay sesión iniciada:
+          return const LoginScreen();
         },
       ),
     );

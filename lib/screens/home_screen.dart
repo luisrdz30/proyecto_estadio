@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:proyecto_estadio/screens/favorites_screen.dart';
+import 'package:proyecto_estadio/screens/login_screen.dart';
 import '../models/event.dart';
 import 'event_card.dart';
 import 'about_screen.dart';
@@ -17,7 +19,9 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 Datos dummy (luego vendrán de Firebase)
+    final theme = Theme.of(context);
+
+    // 🔥 Datos temporales (prueba)
     final List<Event> events = [
       Event(
         title: "Concierto Rock Fest",
@@ -45,7 +49,7 @@ class HomeScreen extends StatelessWidget {
       ),
     ];
 
-    final theme = Theme.of(context);
+    final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       drawer: Drawer(
@@ -56,20 +60,16 @@ class HomeScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: theme.colorScheme.primary,
               ),
-              currentAccountPicture: CircleAvatar(
+              currentAccountPicture: const CircleAvatar(
                 backgroundColor: Colors.white,
-                child: Icon(
-                  Icons.person,
-                  size: 40,
-                  color: theme.colorScheme.primary,
-                ),
+                child: Icon(Icons.person, size: 40, color: Colors.deepPurple),
               ),
               accountName: Text(
-                "Usuario",
+                user?.displayName ?? "Usuario",
                 style: TextStyle(color: theme.colorScheme.onPrimary),
               ),
               accountEmail: Text(
-                "usuario@email.com",
+                user?.email ?? user?.phoneNumber ?? "Sin correo asociado",
                 style: TextStyle(color: theme.colorScheme.onPrimary),
               ),
             ),
@@ -89,11 +89,6 @@ class HomeScreen extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.shopping_cart),
-              title: const Text("Carrito"),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
               leading: const Icon(Icons.info),
               title: const Text("Quiénes somos"),
               onTap: () {
@@ -109,22 +104,42 @@ class HomeScreen extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const FavoritesScreen(favoriteEvents: [],)),
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const FavoritesScreen(favoriteEvents: []),
+                  ),
                 );
               },
             ),
             const Divider(),
+            // 🌙 Cambio de tema
             SwitchListTile(
               title: const Text("Modo oscuro"),
               secondary: const Icon(Icons.dark_mode),
               value: isDarkMode,
-              onChanged: onThemeChanged,
+              onChanged: (value) {
+                Navigator.pop(context); // Cierra el drawer
+                onThemeChanged(value);
+              },
             ),
             const Divider(),
+            // 🚪 Cerrar sesión
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text("Cerrar sesión"),
-              onTap: () => Navigator.pop(context),
+              onTap: () async {
+                Navigator.pop(context); // Cierra el drawer
+                await FirebaseAuth.instance.signOut();
+
+                // Ignora el snackBar (Firebase reconstruirá la app automáticamente)
+                if (context.mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    (route) => false,
+                  );
+                }
+
+              },
             ),
           ],
         ),
@@ -147,7 +162,7 @@ class HomeScreen extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.shopping_cart),
                 onPressed: () {
-                  // Pantalla de carrito pendiente
+                  // TODO: Pantalla de carrito
                 },
               ),
               Positioned(
@@ -160,7 +175,7 @@ class HomeScreen extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: const Text(
-                    "2", // más adelante será dinámico
+                    "2",
                     style: TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ),

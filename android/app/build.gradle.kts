@@ -12,12 +12,13 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        // ✅ Usar Java 17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = "17"
     }
 
     defaultConfig {
@@ -32,12 +33,26 @@ android {
     }
 
     buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+        getByName("release") {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        getByName("debug") {
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
+
+}
+
+dependencies {
+    implementation("com.google.firebase:firebase-auth:23.1.0")
+    implementation("com.google.firebase:firebase-core:21.1.1")
+    implementation("com.google.android.material:material:1.12.0")
 }
 
 flutter {
