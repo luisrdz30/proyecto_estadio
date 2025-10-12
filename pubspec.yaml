@@ -23,6 +23,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/logo_estadio_sin_fondo.png
+    - assets/images/about_banner.png
 
 flutter_native_splash:
   color: "#ffffff" # fondo blanco, cámbialo si quieres

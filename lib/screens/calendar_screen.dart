@@ -14,10 +14,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Calendario de Eventos"),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -33,36 +36,55 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   _selectedDay = selectedDay;
                   _focusedDay = focusedDay;
                 });
-
-                // Aquí luego filtraremos eventos por fecha seleccionada
               },
-              calendarStyle: const CalendarStyle(
+              calendarStyle: CalendarStyle(
                 todayDecoration: BoxDecoration(
-                  color: Colors.deepPurple,
+                  color: theme.colorScheme.primary,
                   shape: BoxShape.circle,
                 ),
                 selectedDecoration: BoxDecoration(
-                  color: Colors.purpleAccent,
+                  color: theme.colorScheme.secondary,
                   shape: BoxShape.circle,
                 ),
+                defaultTextStyle: TextStyle(
+                  color: theme.colorScheme.onBackground,
+                ),
+                weekendTextStyle: TextStyle(
+                  color: theme.colorScheme.onBackground.withOpacity(0.7),
+                ),
               ),
-              headerStyle: const HeaderStyle(
+              headerStyle: HeaderStyle(
                 formatButtonVisible: false,
                 titleCentered: true,
+                titleTextStyle: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onBackground,
+                ),
+                leftChevronIcon: Icon(Icons.chevron_left,
+                    color: theme.colorScheme.onBackground),
+                rightChevronIcon: Icon(Icons.chevron_right,
+                    color: theme.colorScheme.onBackground),
               ),
             ),
             const SizedBox(height: 20),
             Expanded(
               child: Center(
                 child: _selectedDay == null
-                    ? const Text(
+                    ? Text(
                         "Selecciona una fecha para ver eventos",
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: theme.colorScheme.onBackground.withOpacity(0.6),
+                        ),
                       )
                     : Text(
                         "Eventos del ${_selectedDay!.day}/${_selectedDay!.month}/${_selectedDay!.year}",
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onBackground,
+                        ),
                       ),
               ),
             ),

@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+
+@immutable
 class Event {
   final String title;
   final String date;
@@ -6,7 +9,7 @@ class Event {
   final String description;
   final double price;
 
-  Event({
+  const Event({
     required this.title,
     required this.date,
     required this.place,
@@ -14,4 +17,9 @@ class Event {
     required this.description,
     required this.price,
   });
+
+  @override
+  String toString() {
+    return "Event(title: $title, date: $date, place: $place, price: $price)";
+  }
 }
