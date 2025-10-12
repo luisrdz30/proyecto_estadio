@@ -4,7 +4,6 @@ import '../models/event.dart';
 import 'event_card.dart';
 import 'about_screen.dart';
 import 'calendar_screen.dart';
-import 'favorites_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final bool isDarkMode;
