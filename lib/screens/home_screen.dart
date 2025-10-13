@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:proyecto_estadio/screens/favorites_screen.dart';
 import 'package:proyecto_estadio/screens/login_screen.dart';
 import '../models/event.dart';
+import '../services/firestore_service.dart';
 import 'event_card.dart';
 import 'about_screen.dart';
 import 'calendar_screen.dart';
@@ -20,36 +21,8 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    // 🔥 Datos temporales (prueba)
-    final List<Event> events = [
-      Event(
-        title: "Concierto Rock Fest",
-        date: "25 Octubre 2025",
-        place: "Estadio Olímpico",
-        image: "https://picsum.photos/400/200?random=1",
-        description: "Un concierto con las mejores bandas de rock.",
-        price: 50.0,
-      ),
-      Event(
-        title: "Partido Final Copa",
-        date: "30 Octubre 2025",
-        place: "Coliseo Central",
-        image: "https://picsum.photos/400/200?random=2",
-        description: "La gran final de la Copa Nacional.",
-        price: 30.0,
-      ),
-      Event(
-        title: "Obra de Teatro",
-        date: "5 Noviembre 2025",
-        place: "Teatro Nacional",
-        image: "https://picsum.photos/400/200?random=3",
-        description: "Una obra clásica con actores reconocidos.",
-        price: 25.0,
-      ),
-    ];
-
     final user = FirebaseAuth.instance.currentUser;
+    final FirestoreService firestoreService = FirestoreService();
 
     return Scaffold(
       drawer: Drawer(
@@ -104,10 +77,7 @@ class HomeScreen extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        const FavoritesScreen(favoriteEvents: []),
-                  ),
+                  MaterialPageRoute(builder: (context) => const FavoritesScreen(favoriteEvents: [],)),
                 );
               },
             ),
@@ -130,15 +100,12 @@ class HomeScreen extends StatelessWidget {
               onTap: () async {
                 Navigator.pop(context); // Cierra el drawer
                 await FirebaseAuth.instance.signOut();
-
-                // Ignora el snackBar (Firebase reconstruirá la app automáticamente)
                 if (context.mounted) {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (context) => const LoginScreen()),
                     (route) => false,
                   );
                 }
-
               },
             ),
           ],
@@ -184,11 +151,30 @@ class HomeScreen extends StatelessWidget {
           )
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: events.length,
-        itemBuilder: (context, index) {
-          return EventCard(event: events[index]);
+
+      // 🔥 Carga dinámica desde Firestore
+      body: StreamBuilder<List<Event>>(
+        stream: firestoreService.getEvents(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return const Center(child: Text("Error al cargar los eventos"));
+          }
+
+          final events = snapshot.data ?? [];
+          if (events.isEmpty) {
+            return const Center(child: Text("No hay eventos disponibles"));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16.0),
+            itemCount: events.length,
+            itemBuilder: (context, index) {
+              return EventCard(event: events[index]);
+            },
+          );
         },
       ),
     );
