@@ -77,10 +77,13 @@ class HomeScreen extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const FavoritesScreen(favoriteEvents: [],)),
+                  MaterialPageRoute(
+                    builder: (context) => const FavoritesScreen(),
+                  ),
                 );
               },
             ),
+
             const Divider(),
             // 🌙 Cambio de tema
             SwitchListTile(
