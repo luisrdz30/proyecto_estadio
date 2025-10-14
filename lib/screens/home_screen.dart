@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:proyecto_estadio/screens/favorites_screen.dart';
-import 'package:proyecto_estadio/screens/login_screen.dart';
 import '../models/event.dart';
 import '../services/firestore_service.dart';
 import 'event_card.dart';
+import 'event_detail.dart';
 import 'about_screen.dart';
 import 'calendar_screen.dart';
+import 'favorites_screen.dart';
+import 'login_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final bool isDarkMode;
   final ValueChanged<bool> onThemeChanged;
 
@@ -19,10 +20,18 @@ class HomeScreen extends StatelessWidget {
   });
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final user = FirebaseAuth.instance.currentUser;
-    final FirestoreService firestoreService = FirestoreService();
 
     return Scaffold(
       drawer: Drawer(
@@ -30,9 +39,7 @@ class HomeScreen extends StatelessWidget {
           padding: EdgeInsets.zero,
           children: [
             UserAccountsDrawerHeader(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary,
-              ),
+              decoration: BoxDecoration(color: theme.colorScheme.primary),
               currentAccountPicture: const CircleAvatar(
                 backgroundColor: Colors.white,
                 child: Icon(Icons.person, size: 40, color: Colors.deepPurple),
@@ -77,22 +84,19 @@ class HomeScreen extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const FavoritesScreen(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const FavoritesScreen()),
                 );
               },
             ),
-
             const Divider(),
             // 🌙 Cambio de tema
             SwitchListTile(
               title: const Text("Modo oscuro"),
               secondary: const Icon(Icons.dark_mode),
-              value: isDarkMode,
+              value: widget.isDarkMode,
               onChanged: (value) {
-                Navigator.pop(context); // Cierra el drawer
-                onThemeChanged(value);
+                Navigator.pop(context);
+                widget.onThemeChanged(value);
               },
             ),
             const Divider(),
@@ -101,7 +105,7 @@ class HomeScreen extends StatelessWidget {
               leading: const Icon(Icons.logout),
               title: const Text("Cerrar sesión"),
               onTap: () async {
-                Navigator.pop(context); // Cierra el drawer
+                Navigator.pop(context);
                 await FirebaseAuth.instance.signOut();
                 if (context.mounted) {
                   Navigator.of(context).pushAndRemoveUntil(
@@ -114,6 +118,7 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
+
       appBar: AppBar(
         title: const Text("Eventos"),
         actions: [
@@ -155,30 +160,69 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
 
-      // 🔥 Carga dinámica desde Firestore
-      body: StreamBuilder<List<Event>>(
-        stream: firestoreService.getEvents(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return const Center(child: Text("Error al cargar los eventos"));
-          }
+      body: Column(
+        children: [
+          // 🔍 Barra de búsqueda
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (value) {
+                setState(() => _searchQuery = value.trim().toLowerCase());
+              },
+              decoration: InputDecoration(
+                hintText: "Buscar evento o tipo (fútbol, concierto...)",
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
 
-          final events = snapshot.data ?? [];
-          if (events.isEmpty) {
-            return const Center(child: Text("No hay eventos disponibles"));
-          }
+          // 🔥 Carga dinámica desde Firestore con filtro
+          Expanded(
+            child: StreamBuilder<List<Event>>(
+              stream: _firestoreService.getEvents(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return const Center(child: Text("Error al cargar los eventos"));
+                }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16.0),
-            itemCount: events.length,
-            itemBuilder: (context, index) {
-              return EventCard(event: events[index]);
-            },
-          );
-        },
+                final events = snapshot.data ?? [];
+                if (events.isEmpty) {
+                  return const Center(child: Text("No hay eventos disponibles"));
+                }
+
+                // 🔹 Filtro por nombre o tipo (place = tipo)
+                final filteredEvents = events.where((event) {
+                  final title = event.title.toLowerCase();
+                  final type = event.place.toLowerCase();
+                  return title.contains(_searchQuery) || type.contains(_searchQuery);
+                }).toList();
+
+                if (filteredEvents.isEmpty) {
+                  return const Center(child: Text("No se encontraron resultados"));
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16.0),
+                  itemCount: filteredEvents.length,
+                  itemBuilder: (context, index) {
+                    final event = filteredEvents[index];
+                    return EventCard(event: event);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
