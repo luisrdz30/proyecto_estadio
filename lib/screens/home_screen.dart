@@ -227,3 +227,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+//FALTA PONER LO DE LA PANTALLA DE MIS ENTRADAS.
