@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:proyecto_estadio/screens/cart_screen.dart';
 import '../models/event.dart';
 import '../services/firestore_service.dart';
 import 'event_card.dart';
@@ -8,10 +9,12 @@ import 'about_screen.dart';
 import 'calendar_screen.dart';
 import 'my_tickets_screen.dart';
 import 'favorites_screen.dart';
+import '../services/cart_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isDarkMode;
   final ValueChanged<bool> onThemeChanged;
+  
 
   const HomeScreen({
     super.key,
@@ -27,6 +30,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  final CartService _cartService = CartService();
+
 
   @override
   Widget build(BuildContext context) {
@@ -139,31 +144,42 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.shopping_cart),
-                onPressed: () {
-                  // TODO: Pantalla de carrito
-                },
-              ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _cartService.getCartItems(),
+            builder: (context, snapshot) {
+              final count = snapshot.data?.length ?? 0;
+
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_cart),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CartScreen()),
+                      );
+                    },
                   ),
-                  child: const Text(
-                    "2",
-                    style: TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ),
-              ),
-            ],
+                  if (count > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          "$count",
+                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -234,5 +250,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
-//FALTA PONER LO DE LA PANTALLA DE MIS ENTRADAS.

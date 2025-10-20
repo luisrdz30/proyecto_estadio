@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/event.dart';
 import '../services/favorites_service.dart';
+import '../services/cart_service.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final Event event;
@@ -15,6 +16,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   late Map<String, int> ticketCounts;
   bool _isFavorite = false;
   final FavoritesService _favoritesService = FavoritesService();
+  final CartService _cartService = CartService(); // 🛒 añadido
 
   @override
   void initState() {
@@ -228,28 +230,33 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             ),
             const SizedBox(height: 12),
 
-            // 🛒 Comprar
-            ElevatedButton.icon(
+            // 🛒 Agregar al carrito
+            OutlinedButton.icon(
               onPressed: total > 0
-                  ? () {
+                  ? () async {
+                      await _cartService.addToCart(widget.event, ticketCounts);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            "Compra registrada: \$${total.toStringAsFixed(2)}",
+                            "${widget.event.title} añadido al carrito 🛒",
                           ),
+                          duration: const Duration(seconds: 2),
                         ),
                       );
                     }
                   : null,
-              icon: const Icon(Icons.shopping_cart),
-              label: const Text("Comprar entradas"),
-              style: ElevatedButton.styleFrom(
+              icon: const Icon(Icons.add_shopping_cart),
+              label: const Text("Agregar al carrito"),
+              style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
-                disabledBackgroundColor: Colors.grey.shade400,
+                foregroundColor: theme.colorScheme.primary,
+                side: BorderSide(color: theme.colorScheme.primary, width: 2),
               ),
             ),
+            const SizedBox(height: 12),
+
+            // 🛒 Comprar
+            
           ],
         ),
       ),

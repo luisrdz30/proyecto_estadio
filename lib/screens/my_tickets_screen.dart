@@ -7,7 +7,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import 'package:flutter/rendering.dart'; // 👈 necesario para RenderRepaintBoundary
+import 'package:flutter/rendering.dart';
 
 class MyTicketsScreen extends StatefulWidget {
   const MyTicketsScreen({super.key});
@@ -77,7 +77,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                 final now = DateTime.now();
                 final allTickets = snapshot.data!.docs;
 
-                // 🧠 Filtramos según fecha
+                // 🧠 Filtramos según la fecha
                 final tickets = allTickets.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
                   final timestamp = data['eventDateTime'];
@@ -104,9 +104,13 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                     final eventTitle = data['eventTitle'] ?? 'Evento desconocido';
                     final date = data['date'] ?? '';
                     final time = data['time'] ?? '';
-                    final qrCode = data['qrCode'] ?? 'Sin código';
-                    final seat = data['seat'] ?? '';
                     final zone = data['zone'] ?? '';
+                    final seat = data['seat'] ?? '';
+                    final qrCode = data['qrCode'] ?? 'SIN_QR';
+                    final eventDateTime = data['eventDateTime'];
+                    final dateTimeText = eventDateTime != null
+                        ? (eventDateTime as Timestamp).toDate().toString()
+                        : '';
 
                     _qrKeys[qrCode] = GlobalKey();
 
@@ -136,11 +140,12 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                             ),
                             if (zone.isNotEmpty)
                               Text(
-                                "Zona: $zone  ${seat.isNotEmpty ? '• Asiento: $seat' : ''}",
+                                "Zona: $zone ${seat.isNotEmpty ? '• Asiento: $seat' : ''}",
                                 style: theme.textTheme.bodySmall,
                               ),
                             const SizedBox(height: 12),
 
+                            // 🧾 QR del ticket
                             Center(
                               child: RepaintBoundary(
                                 key: _qrKeys[qrCode],
@@ -183,10 +188,11 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
     );
   }
 
-  // 📸 Captura y comparte la imagen del QR
+  // 📸 Captura y comparte el QR
   Future<void> _shareQrImage(String qrCode, String eventTitle) async {
     try {
-      final boundary = _qrKeys[qrCode]!.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final boundary = _qrKeys[qrCode]!.currentContext!.findRenderObject()
+          as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 3.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final Uint8List pngBytes = byteData!.buffer.asUint8List();
