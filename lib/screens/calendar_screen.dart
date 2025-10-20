@@ -154,7 +154,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   fontSize: 16,
                                 ),
                               ),
-                              subtitle: Text(event.place),
+                              subtitle: Text(event.type),
                               onTap: () {
                                 Navigator.push(
                                   context,

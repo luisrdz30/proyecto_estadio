@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'register_screen.dart';
-import 'register_phone_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -41,8 +40,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
           await _auth.signOut();
-        } else {
-          // ✅ No hacemos Navigator.push aquí, el StreamBuilder en main.dart lo hará automáticamente.
         }
       }
     } on FirebaseAuthException catch (e) {
@@ -61,6 +58,64 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// 📨 Restablecer contraseña
+  Future<void> _resetPassword(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Se ha enviado un correo para restablecer tu contraseña. Revisa tu bandeja o spam.",
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.code == 'user-not-found'
+                ? "No existe una cuenta con este correo."
+                : "Error al enviar el correo. Intenta nuevamente.",
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// 🔹 Mostrar diálogo para ingresar el correo
+  void _showForgotPasswordDialog() {
+    final TextEditingController resetController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Restablecer contraseña"),
+        content: TextField(
+          controller: resetController,
+          decoration: const InputDecoration(
+            labelText: "Correo electrónico",
+            prefixIcon: Icon(Icons.email),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancelar"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _resetPassword(resetController.text);
+            },
+            child: const Text("Enviar"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -70,11 +125,9 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // 🔹 Logo
             Image.asset("assets/images/logo_estadio_sin_fondo.png", height: 120),
             const SizedBox(height: 40),
 
-            // 🔹 Título
             const Text(
               "Inicio de Sesión",
               style: TextStyle(
@@ -85,7 +138,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 30),
 
-            // 🔹 Correo
             TextField(
               controller: _emailController,
               decoration: InputDecoration(
@@ -99,7 +151,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 20),
 
-            // 🔹 Contraseña
             TextField(
               controller: _passwordController,
               obscureText: true,
@@ -111,14 +162,27 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
+
+            // 🔹 Olvidaste tu contraseña
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _showForgotPasswordDialog,
+                child: const Text(
+                  "¿Olvidaste tu contraseña?",
+                  style: TextStyle(color: Colors.deepPurple),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
 
             if (_errorMessage != null)
               Text(
                 _errorMessage!,
                 style: const TextStyle(color: Colors.red),
               ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
 
             if (_isLoading)
               const CircularProgressIndicator()
@@ -130,12 +194,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: const Text("Iniciar sesión"),
               ),
-
             const SizedBox(height: 20),
+
             const Divider(thickness: 1),
             const SizedBox(height: 10),
 
-            // 🔹 Crear cuenta con correo
             OutlinedButton.icon(
               icon: const Icon(Icons.person_add_alt_1),
               onPressed: () {
@@ -147,24 +210,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 );
               },
               label: const Text("Crear cuenta con correo"),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            // 🔹 Crear cuenta con teléfono
-            OutlinedButton.icon(
-              icon: const Icon(Icons.phone_android),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const RegisterPhoneScreen(),
-                  ),
-                );
-              },
-              label: const Text("Crear cuenta con teléfono"),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
               ),

@@ -76,7 +76,7 @@ class FavoritesScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              "${fav.date} • ${fav.place}",
+                              "${fav.date} • ${fav.type}",
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onSurface.withOpacity(0.7),
                               ),
@@ -141,8 +141,13 @@ class FavoritesScreen extends StatelessWidget {
 
       final fullEvent = Event(
         title: data['title'] ?? fav.title,
+        type: data['type'] ?? fav.type,
         date: data['date'] ?? fav.date,
-        place: data['place'] ?? fav.place,
+        time: data['time'] ?? '',
+        duration: data['duration'] ?? '',
+        eventDate: data['eventDate'] != null
+            ? (data['eventDate'] as Timestamp).toDate()
+            : null,
         description: data['description'] ?? fav.description,
         image: data['image'] ?? fav.image,
         zones: zones,

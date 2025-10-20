@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -10,56 +9,56 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmController = TextEditingController();
-
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
 
-  Future<void> _register() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-    final confirm = _confirmController.text.trim();
-
-    if (password != confirm) {
-      setState(() {
-        _errorMessage = "Las contraseñas no coinciden.";
-      });
-      return;
-    }
-
+  Future<void> _registerWithEmail() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
       );
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Cuenta creada exitosamente")),
-      );
+      final user = userCredential.user;
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
+      if (user != null) {
+        // 🔹 Enviar correo de verificación
+        await user.sendEmailVerification();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Cuenta creada. Se ha enviado un correo de verificación. Revisa tu bandeja o spam.",
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // 🔹 Cerrar sesión y volver al login
+        await _auth.signOut();
+        Navigator.pop(context);
+      }
     } on FirebaseAuthException catch (e) {
       setState(() {
         _errorMessage = switch (e.code) {
-          'email-already-in-use' => 'El correo ya está registrado.',
+          'email-already-in-use' => 'Ya existe una cuenta con este correo.',
           'invalid-email' => 'Correo no válido.',
-          'weak-password' => 'La contraseña es muy débil.',
-          _ => 'Error al crear la cuenta. Inténtalo nuevamente.',
+          'weak-password' => 'La contraseña es demasiado débil.',
+          _ => 'Error al registrar. Intenta nuevamente.',
         };
       });
     } finally {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -67,36 +66,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(title: const Text("Crear cuenta")),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 60.0),
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Logo
-            SizedBox(
-              height: 120,
-              child: Image.asset("assets/images/logo_estadio_sin_fondo.png"),
-            ),
-            const SizedBox(height: 40),
-
-            const Text(
-              "Crear Cuenta",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
-              ),
-            ),
-            const SizedBox(height: 40),
+            Image.asset("assets/images/logo_estadio_sin_fondo.png", height: 100),
+            const SizedBox(height: 30),
 
             TextField(
               controller: _emailController,
               decoration: InputDecoration(
                 labelText: "Correo electrónico",
                 prefixIcon: const Icon(Icons.email),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
               keyboardType: TextInputType.emailAddress,
             ),
@@ -108,70 +92,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
               decoration: InputDecoration(
                 labelText: "Contraseña",
                 prefixIcon: const Icon(Icons.lock),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 20),
 
-            TextField(
-              controller: _confirmController,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: "Confirmar contraseña",
-                prefixIcon: const Icon(Icons.lock_outline),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
-
             if (_errorMessage != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Text(
-                  _errorMessage!,
-                  style: const TextStyle(color: Colors.red, fontSize: 14),
-                ),
-              ),
+              Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 20),
 
             _isLoading
                 ? const CircularProgressIndicator()
-                : SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _register,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "Registrarse",
-                        style: TextStyle(fontSize: 16),
-                      ),
+                : ElevatedButton(
+                    onPressed: _registerWithEmail,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
                     ),
+                    child: const Text("Registrarme"),
                   ),
-            const SizedBox(height: 20),
-
-            TextButton(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                );
-              },
-              child: const Text(
-                "¿Ya tienes cuenta? Iniciar sesión",
-                style: TextStyle(color: Colors.deepPurple),
-              ),
-            ),
           ],
         ),
       ),
     );
   }
 }
+  

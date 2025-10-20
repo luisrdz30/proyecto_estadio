@@ -104,11 +104,20 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              "${event.date}  •  ${event.place}",
+              "${event.type} • ${event.date} • ${event.time}",
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.7),
               ),
             ),
+            if (event.duration.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                "Duración aproximada: ${event.duration}",
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Text(
               event.description,
@@ -208,9 +217,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 _isFavorite ? Icons.favorite : Icons.favorite_border,
                 color: _isFavorite ? Colors.red : theme.colorScheme.primary,
               ),
-              label: Text(_isFavorite
-                  ? "Quitar de favoritos"
-                  : "Agregar a favoritos"),
+              label: Text(
+                _isFavorite ? "Quitar de favoritos" : "Agregar a favoritos",
+              ),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
                 foregroundColor: theme.colorScheme.primary,
@@ -226,7 +235,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                              "Compra registrada: \$${total.toStringAsFixed(2)}"),
+                            "Compra registrada: \$${total.toStringAsFixed(2)}",
+                          ),
                         ),
                       );
                     }

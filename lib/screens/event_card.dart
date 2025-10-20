@@ -54,7 +54,7 @@ class EventCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  "${event.date} • ${event.place}",
+                  "${event.date} • ${event.type}",
                   style: (theme.textTheme.bodyMedium ??
                           const TextStyle(fontSize: 14))
                       .copyWith(

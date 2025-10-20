@@ -7,7 +7,6 @@ import 'event_detail.dart';
 import 'about_screen.dart';
 import 'calendar_screen.dart';
 import 'favorites_screen.dart';
-import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isDarkMode;
@@ -89,6 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             const Divider(),
+
             // 🌙 Cambio de tema
             SwitchListTile(
               title: const Text("Modo oscuro"),
@@ -100,19 +100,15 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             const Divider(),
+
             // 🚪 Cerrar sesión
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text("Cerrar sesión"),
               onTap: () async {
-                Navigator.pop(context);
+                Navigator.pop(context); // cierra el Drawer
                 await FirebaseAuth.instance.signOut();
-                if (context.mounted) {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const LoginScreen()),
-                    (route) => false,
-                  );
-                }
+                // ⚡ No navegamos manualmente: el StreamBuilder en main.dart se encarga
               },
             ),
           ],
@@ -154,9 +150,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ),
-              )
+              ),
             ],
-          )
+          ),
         ],
       ),
 
@@ -200,10 +196,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   return const Center(child: Text("No hay eventos disponibles"));
                 }
 
-                // 🔹 Filtro por nombre o tipo (place = tipo)
                 final filteredEvents = events.where((event) {
                   final title = event.title.toLowerCase();
-                  final type = event.place.toLowerCase();
+                  final type = event.type.toLowerCase();
                   return title.contains(_searchQuery) || type.contains(_searchQuery);
                 }).toList();
 
@@ -227,4 +222,5 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
 //FALTA PONER LO DE LA PANTALLA DE MIS ENTRADAS.
