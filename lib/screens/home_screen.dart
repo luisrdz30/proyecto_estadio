@@ -6,6 +6,7 @@ import 'event_card.dart';
 import 'event_detail.dart';
 import 'about_screen.dart';
 import 'calendar_screen.dart';
+import 'my_tickets_screen.dart';
 import 'favorites_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -100,6 +101,17 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             const Divider(),
+
+            ListTile(
+              leading: const Icon(Icons.confirmation_num),
+              title: const Text('Mis Entradas'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MyTicketsScreen()),
+                );
+              },
+            ),
 
             // 🚪 Cerrar sesión
             ListTile(
