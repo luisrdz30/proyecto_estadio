@@ -5,13 +5,15 @@ import '../models/zone.dart';
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // 📦 Obtener lista de eventos desde Firestore
+  // 📦 Obtener lista de eventos activos desde Firestore
   Stream<List<Event>> getEvents() {
+    final now = DateTime.now();
+
     return _db.collection('events').snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) {
+      final events = snapshot.docs.map((doc) {
         final data = doc.data();
 
-        // 🧩 Si 'zones' viene como mapa o lista, la convertimos correctamente
+        // 🧩 Parseo seguro de zonas
         final dynamic zonesData = data['zones'];
         List<Zone> zones = [];
 
@@ -35,21 +37,43 @@ class FirestoreService {
           }).toList();
         }
 
-        // ✅ Construir evento con todos los campos actualizados
-        return Event(
+        // 🧩 Conversión segura de campos
+        final Timestamp? endTimestamp = data['endDateTime'];
+        final DateTime? endDateTime = endTimestamp?.toDate();
+
+        final Timestamp? eventTimestamp = data['eventDate'];
+        final DateTime? eventDate = eventTimestamp?.toDate();
+
+        // ✅ Construcción del evento
+        final event = Event(
+          id: doc.id,
           title: data['title'] ?? 'Sin título',
           type: data['type'] ?? '',
           date: data['date'] ?? '',
           time: data['time'] ?? '',
           duration: data['duration'] ?? '',
-          eventDate: data['eventDate'] != null
-              ? (data['eventDate'] as Timestamp).toDate()
-              : null,
+          eventDate: eventDate,
           description: data['description'] ?? '',
           image: data['image'] ?? '',
           zones: zones,
+          capacity: (data['capacity'] ?? 0).toInt(),
+          sold: (data['sold'] ?? 0).toInt(),
+          isActive: (data['isActive'] ?? true) == true,
+          endDateTime: endDateTime,
         );
+
+        return event;
       }).toList();
+
+      // 🧠 Filtramos solo los eventos activos y dentro de tiempo
+      final filtered = events.where((event) {
+        final endDate = event.endDateTime;
+        final stillActive = event.isActive &&
+            (endDate == null || endDate.isAfter(now));
+        return stillActive;
+      }).toList();
+
+      return filtered;
     });
   }
 }
