@@ -2,7 +2,7 @@
     package="com.estadio.app">
 
     <application
-        android:label="proyecto_estadio"
+        android:label="EstadiumApp"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

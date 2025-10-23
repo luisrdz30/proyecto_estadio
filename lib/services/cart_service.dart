@@ -137,7 +137,7 @@ class CartService {
         .orderBy('addedAt', descending: true)
         .snapshots()
         .map((snap) =>
-            snap.docs.map((d) => d.data() as Map<String, dynamic>).toList());
+            snap.docs.map((d) => d.data()).toList());
   }
 
   /// 🧹 Vaciar todo el carrito

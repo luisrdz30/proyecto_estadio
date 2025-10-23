@@ -4,7 +4,6 @@ import 'package:proyecto_estadio/screens/cart_screen.dart';
 import '../models/event.dart';
 import '../services/firestore_service.dart';
 import 'event_card.dart';
-import 'event_detail.dart';
 import 'about_screen.dart';
 import 'calendar_screen.dart';
 import 'my_tickets_screen.dart';

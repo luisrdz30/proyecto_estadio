@@ -2,7 +2,7 @@ import 'zone.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Event {
-  final String id; // 🔹 Nuevo: ID del documento Firestore
+  final String id; // 🔹 ID del documento Firestore
   final String title;
   final String type;
   final String date;
@@ -13,7 +13,7 @@ class Event {
   final String image;
   final List<Zone> zones;
 
-  // 🔹 Nuevos campos para control de disponibilidad
+  // 🔹 Campos adicionales para control de disponibilidad
   final int capacity;
   final int sold;
   final bool isActive;

@@ -18,7 +18,7 @@ class MyTicketsScreen extends StatefulWidget {
 
 class _MyTicketsScreenState extends State<MyTicketsScreen> {
   final Map<String, GlobalKey> _qrKeys = {};
-  bool _showUpcoming = true; // 🔁 Alternar entre próximas / pasadas
+  bool _showUpcoming = true;
 
   @override
   Widget build(BuildContext context) {
@@ -40,8 +40,6 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
       body: Column(
         children: [
           const SizedBox(height: 8),
-
-          // 🔘 Selector: Próximas / Pasadas
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: SegmentedButton<bool>(
@@ -77,8 +75,8 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                 final now = DateTime.now();
                 final allTickets = snapshot.data!.docs;
 
-                // 🧠 Filtramos según la fecha
-                final tickets = allTickets.where((doc) {
+                // 🧠 Filtrar próximas/pasadas
+                final filteredTickets = allTickets.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
                   final timestamp = data['eventDateTime'];
                   if (timestamp == null) return false;
@@ -88,7 +86,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                       : eventDate.isBefore(now);
                 }).toList();
 
-                if (tickets.isEmpty) {
+                if (filteredTickets.isEmpty) {
                   return Center(
                     child: Text(_showUpcoming
                         ? "No tienes eventos próximos."
@@ -96,87 +94,140 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                   );
                 }
 
+                // 📦 Agrupar por evento y luego por zona
+                final Map<String, Map<String, List<QueryDocumentSnapshot>>> groupedTickets = {};
+
+                for (final doc in filteredTickets) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final eventTitle = data['eventTitle'] ?? 'Evento desconocido';
+                  final zone = data['zone'] ?? 'Zona sin nombre';
+
+                  groupedTickets.putIfAbsent(eventTitle, () => {});
+                  groupedTickets[eventTitle]!.putIfAbsent(zone, () => []);
+                  groupedTickets[eventTitle]![zone]!.add(doc);
+                }
+
+                final eventTitles = groupedTickets.keys.toList();
+
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: tickets.length,
-                  itemBuilder: (_, i) {
-                    final data = tickets[i].data() as Map<String, dynamic>;
-                    final eventTitle = data['eventTitle'] ?? 'Evento desconocido';
-                    final date = data['date'] ?? '';
-                    final time = data['time'] ?? '';
-                    final zone = data['zone'] ?? '';
-                    final seat = data['seat'] ?? '';
-                    final qrCode = data['qrCode'] ?? 'SIN_QR';
-                    final eventDateTime = data['eventDateTime'];
-                    final dateTimeText = eventDateTime != null
-                        ? (eventDateTime as Timestamp).toDate().toString()
-                        : '';
+                  itemCount: eventTitles.length,
+                  itemBuilder: (context, eventIndex) {
+                    final eventTitle = eventTitles[eventIndex];
+                    final zonesMap = groupedTickets[eventTitle]!;
 
-                    _qrKeys[qrCode] = GlobalKey();
+                    // Tomar info del primer ticket de ese evento
+                    final firstTicket = zonesMap.values.first.first.data() as Map<String, dynamic>;
+                    final date = firstTicket['date'] ?? '';
+                    final time = firstTicket['time'] ?? '';
 
-                    return Card(
-                      elevation: 4,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              eventTitle,
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "$date • $time",
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            if (zone.isNotEmpty)
-                              Text(
-                                "Zona: $zone ${seat.isNotEmpty ? '• Asiento: $seat' : ''}",
-                                style: theme.textTheme.bodySmall,
-                              ),
-                            const SizedBox(height: 12),
-
-                            // 🧾 QR del ticket
-                            Center(
-                              child: RepaintBoundary(
-                                key: _qrKeys[qrCode],
-                                child: QrImageView(
-                                  data: qrCode,
-                                  version: QrVersions.auto,
-                                  size: 180,
-                                  backgroundColor: Colors.white,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-
-                            Center(
-                              child: OutlinedButton.icon(
-                                onPressed: () async {
-                                  await _shareQrImage(qrCode, eventTitle);
-                                },
-                                icon: const Icon(Icons.share),
-                                label: const Text("Compartir QR"),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: theme.colorScheme.primary,
-                                  side: BorderSide(
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          eventTitle,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
+                          ),
                         ),
-                      ),
+                        Text(
+                          "$date • $time",
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // 🔹 Recorremos cada zona dentro del evento
+                        ...zonesMap.entries.map((entry) {
+                          final zoneName = entry.key;
+                          final tickets = entry.value;
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 10),
+                              Text(
+                                "Zona: $zoneName (${tickets.length} entradas)",
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+
+                              // 🎟️ Carrusel horizontal
+                              SizedBox(
+                                height: 280,
+                                child: ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: tickets.length,
+                                  itemBuilder: (context, i) {
+                                    final data = tickets[i].data() as Map<String, dynamic>;
+                                    final qrCode = data['qrCode'] ?? data['qrData'] ?? 'SIN_QR';
+                                    final seat = data['seat'] ?? '';
+                                    _qrKeys[qrCode] = GlobalKey();
+
+                                    return Container(
+                                      width: 230,
+                                      margin: const EdgeInsets.only(right: 14),
+                                      child: Card(
+                                        elevation: 3,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(14),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.center,
+                                            children: [
+                                              Text(
+                                                "Entrada ${i + 1}",
+                                                style: theme.textTheme.titleSmall?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              if (seat.isNotEmpty)
+                                                Text("Asiento: $seat",
+                                                    style: theme.textTheme.bodySmall),
+                                              const SizedBox(height: 10),
+                                              RepaintBoundary(
+                                                key: _qrKeys[qrCode],
+                                                child: QrImageView(
+                                                  data: qrCode,
+                                                  version: QrVersions.auto,
+                                                  size: 150,
+                                                  backgroundColor: Colors.white,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 10),
+                                              OutlinedButton.icon(
+                                                onPressed: () async {
+                                                  await _shareQrImage(qrCode, eventTitle);
+                                                },
+                                                icon: const Icon(Icons.share, size: 18),
+                                                label: const Text("Compartir"),
+                                                style: OutlinedButton.styleFrom(
+                                                  foregroundColor: theme.colorScheme.primary,
+                                                  side: BorderSide(
+                                                    color: theme.colorScheme.primary,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          );
+                        }),
+
+                        const SizedBox(height: 24),
+                      ],
                     );
                   },
                 );
@@ -188,7 +239,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
     );
   }
 
-  // 📸 Captura y comparte el QR
+  // 📸 Captura y comparte QR
   Future<void> _shareQrImage(String qrCode, String eventTitle) async {
     try {
       final boundary = _qrKeys[qrCode]!.currentContext!.findRenderObject()
