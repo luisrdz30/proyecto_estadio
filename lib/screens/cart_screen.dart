@@ -18,6 +18,7 @@ class _CartScreenState extends State<CartScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
     if (uid == null) {
@@ -178,8 +179,12 @@ class _CartScreenState extends State<CartScreen> {
                                         "${zone['name']} (${zone['count']}x)"),
                                     Text(
                                       "\$${(zone['subtotal'] ?? 0).toStringAsFixed(2)}",
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark
+                                            ? Colors.white
+                                            : theme.colorScheme.primary,
+                                      ),
                                     ),
                                     IconButton(
                                       onPressed: () async {
@@ -200,7 +205,9 @@ class _CartScreenState extends State<CartScreen> {
                                 "Total evento: \$${total.toStringAsFixed(2)}",
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.primary,
+                                  color: isDark
+                                      ? Colors.white
+                                      : theme.colorScheme.primary,
                                 ),
                               ),
                             ),
@@ -226,17 +233,22 @@ class _CartScreenState extends State<CartScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           "Total general:",
                           style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
                         ),
                         Text(
                           "\$${totalGeneral.toStringAsFixed(2)}",
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
-                            color: theme.colorScheme.primary,
+                            color: isDark
+                                ? Colors.white
+                                : theme.colorScheme.primary,
                           ),
                         ),
                       ],
@@ -244,18 +256,7 @@ class _CartScreenState extends State<CartScreen> {
                     const SizedBox(height: 12),
                     ElevatedButton.icon(
                       onPressed: totalGeneral > 0
-                          ? () async {
-                              await _generateTickets(uid);
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        "Entradas generadas y guardadas 🎟️"),
-                                  ),
-                                );
-                                await _cartService.clearCart();
-                              }
-                            }
+                          ? () => _showPaymentPopup(context, uid)
                           : null,
                       icon: const Icon(Icons.payment),
                       label: const Text("Proceder al pago"),
@@ -275,7 +276,6 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  /// 🔽 Resta una unidad de una zona del carrito
   Future<void> _decreaseZoneCount(String eventTitle, String zoneName) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -323,7 +323,6 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  /// 🎟️ Genera tickets por cada zona y los guarda con QR + fecha real
   Future<void> _generateTickets(String uid) async {
     final userCart = await FirebaseFirestore.instance
         .collection('users')
@@ -331,7 +330,6 @@ class _CartScreenState extends State<CartScreen> {
         .collection('cart')
         .get();
 
-    // 🗓️ Diccionario de meses en español
     const meses = {
       'enero': '01',
       'febrero': '02',
@@ -355,7 +353,6 @@ class _CartScreenState extends State<CartScreen> {
       final image = data['image'];
       final zones = (data['zones'] as List<dynamic>?) ?? [];
 
-      // 🧭 Convierte fecha como "5 Noviembre 2025" a DateTime real
       DateTime? eventDateTime;
       try {
         final partes = date.split(' ');
@@ -398,11 +395,116 @@ class _CartScreenState extends State<CartScreen> {
           'image': image,
           'qrId': qrId,
           'qrData': qrData,
-          'eventDateTime': eventDateTime, // ✅ campo usado en Mis Entradas
+          'eventDateTime': eventDateTime,
           'createdAt': FieldValue.serverTimestamp(),
           'used': false,
         });
       }
     }
+  }
+
+  void _showPaymentPopup(BuildContext context, String uid) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        bool isProcessing = true;
+        bool isCompleted = false;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            Future.microtask(() async {
+              if (isProcessing) {
+                await Future.delayed(const Duration(seconds: 2));
+                await _generateTickets(uid);
+                await _cartService.clearCart();
+                await Future.delayed(const Duration(seconds: 3));
+                if (context.mounted) {
+                  setState(() {
+                    isProcessing = false;
+                    isCompleted = true;
+                  });
+                }
+              }
+            });
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              contentPadding: const EdgeInsets.all(24),
+              content: SizedBox(
+                width: 300,
+                height: 260,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 500),
+                  switchInCurve: Curves.easeOutBack,
+                  child: isProcessing
+                      ? Column(
+                          key: const ValueKey(1),
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 20),
+                            Text(
+                              "Procesando pago...",
+                              style: TextStyle(fontSize: 16),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          key: const ValueKey(2),
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0.7, end: 1.0),
+                              duration: const Duration(milliseconds: 600),
+                              curve: Curves.elasticOut,
+                              builder: (context, scale, child) =>
+                                  Transform.scale(
+                                scale: scale,
+                                child: const Icon(
+                                  Icons.check_circle,
+                                  color: Colors.green,
+                                  size: 90,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              "¡Compra realizada con éxito! 🎉",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                Navigator.pushReplacementNamed(
+                                    context, '/my_tickets_screen');
+                              },
+                              icon: const Icon(Icons.confirmation_num),
+                              label: const Text("Ver mis entradas"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    Theme.of(context).colorScheme.primary,
+                                foregroundColor:
+                                    Theme.of(context).colorScheme.onPrimary,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }

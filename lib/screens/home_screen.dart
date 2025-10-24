@@ -13,7 +13,6 @@ import '../services/cart_service.dart';
 class HomeScreen extends StatefulWidget {
   final bool isDarkMode;
   final ValueChanged<bool> onThemeChanged;
-  
 
   const HomeScreen({
     super.key,
@@ -31,22 +30,25 @@ class _HomeScreenState extends State<HomeScreen> {
   String _searchQuery = '';
   final CartService _cartService = CartService();
 
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
+      // 👇 Fondo base del Scaffold (blanco puro o negro azulado)
+      backgroundColor: theme.brightness == Brightness.light
+          ? Colors.white
+          : const Color(0xFF0D1826),
+
       drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
+        child: Column(
           children: [
             UserAccountsDrawerHeader(
               decoration: BoxDecoration(color: theme.colorScheme.primary),
-              currentAccountPicture: const CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Icon(Icons.person, size: 40, color: Colors.deepPurple),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: theme.colorScheme.onPrimary,
+                child: Icon(Icons.person, size: 40, color: theme.colorScheme.primary),
               ),
               accountName: Text(
                 user?.displayName ?? "Usuario",
@@ -73,16 +75,6 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.info),
-              title: const Text("Quiénes somos"),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AboutScreen()),
-                );
-              },
-            ),
-            ListTile(
               leading: const Icon(Icons.favorite),
               title: const Text("Favoritos"),
               onTap: () {
@@ -93,19 +85,6 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             const Divider(),
-
-            // 🌙 Cambio de tema
-            SwitchListTile(
-              title: const Text("Modo oscuro"),
-              secondary: const Icon(Icons.dark_mode),
-              value: widget.isDarkMode,
-              onChanged: (value) {
-                Navigator.pop(context);
-                widget.onThemeChanged(value);
-              },
-            ),
-            const Divider(),
-
             ListTile(
               leading: const Icon(Icons.confirmation_num),
               title: const Text('Mis Entradas'),
@@ -116,15 +95,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-
-            // 🚪 Cerrar sesión
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text("Cerrar sesión"),
               onTap: () async {
-                Navigator.pop(context); // cierra el Drawer
+                Navigator.pop(context);
                 await FirebaseAuth.instance.signOut();
-                // ⚡ No navegamos manualmente: el StreamBuilder en main.dart se encarga
+              },
+            ),
+            const Spacer(),
+            SwitchListTile(
+              title: const Text("Modo oscuro"),
+              secondary: const Icon(Icons.dark_mode),
+              value: widget.isDarkMode,
+              onChanged: (value) {
+                Navigator.pop(context);
+                widget.onThemeChanged(value);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text("Quiénes somos"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AboutScreen()),
+                );
               },
             ),
           ],
@@ -133,6 +129,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
       appBar: AppBar(
         title: const Text("Eventos"),
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
         actions: [
           IconButton(
             icon: const Icon(Icons.calendar_today),
@@ -147,7 +145,6 @@ class _HomeScreenState extends State<HomeScreen> {
             stream: _cartService.getCartItems(),
             builder: (context, snapshot) {
               final count = snapshot.data?.length ?? 0;
-
               return Stack(
                 alignment: Alignment.center,
                 children: [
@@ -166,13 +163,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       top: 8,
                       child: Container(
                         padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.error,
                           shape: BoxShape.circle,
                         ),
                         child: Text(
                           "$count",
-                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                          style: TextStyle(
+                            color: theme.colorScheme.onError,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ),
@@ -193,11 +193,17 @@ class _HomeScreenState extends State<HomeScreen> {
               onChanged: (value) {
                 setState(() => _searchQuery = value.trim().toLowerCase());
               },
+              style: TextStyle(color: theme.colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: "Buscar evento o tipo (fútbol, concierto...)",
-                prefixIcon: const Icon(Icons.search),
+                hintStyle: TextStyle(
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                ),
+                prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
                 filled: true,
-                fillColor: Colors.grey.shade100,
+                fillColor: theme.brightness == Brightness.light
+                    ? Colors.white
+                    : theme.colorScheme.surface.withOpacity(0.9),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -206,42 +212,49 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // 🔥 Carga dinámica desde Firestore con filtro
+          // 🔥 Lista de eventos
           Expanded(
-            child: StreamBuilder<List<Event>>(
-              stream: _firestoreService.getEvents(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return const Center(child: Text("Error al cargar los eventos"));
-                }
+            child: Container(
+              // 👇 Fondo de toda la lista (sin el celeste)
+              color: theme.brightness == Brightness.light
+                  ? Colors.white
+                  : theme.colorScheme.surface.withOpacity(0.05),
 
-                final events = snapshot.data ?? [];
-                if (events.isEmpty) {
-                  return const Center(child: Text("No hay eventos disponibles"));
-                }
+              child: StreamBuilder<List<Event>>(
+                stream: _firestoreService.getEvents(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return const Center(child: Text("Error al cargar los eventos"));
+                  }
 
-                final filteredEvents = events.where((event) {
-                  final title = event.title.toLowerCase();
-                  final type = event.type.toLowerCase();
-                  return title.contains(_searchQuery) || type.contains(_searchQuery);
-                }).toList();
+                  final events = snapshot.data ?? [];
+                  if (events.isEmpty) {
+                    return const Center(child: Text("No hay eventos disponibles"));
+                  }
 
-                if (filteredEvents.isEmpty) {
-                  return const Center(child: Text("No se encontraron resultados"));
-                }
+                  final filteredEvents = events.where((event) {
+                    final title = event.title.toLowerCase();
+                    final type = event.type.toLowerCase();
+                    return title.contains(_searchQuery) || type.contains(_searchQuery);
+                  }).toList();
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: filteredEvents.length,
-                  itemBuilder: (context, index) {
-                    final event = filteredEvents[index];
-                    return EventCard(event: event);
-                  },
-                );
-              },
+                  if (filteredEvents.isEmpty) {
+                    return const Center(child: Text("No se encontraron resultados"));
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: filteredEvents.length,
+                    itemBuilder: (context, index) {
+                      final event = filteredEvents[index];
+                      return EventCard(event: event);
+                    },
+                  );
+                },
+              ),
             ),
           ),
         ],

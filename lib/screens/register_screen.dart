@@ -33,12 +33,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // 🔹 Enviar correo de verificación
         await user.sendEmailVerification();
 
+        final theme = Theme.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
+          SnackBar(
+            content: const Text(
               "Cuenta creada. Se ha enviado un correo de verificación. Revisa tu bandeja o spam.",
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: theme.colorScheme.primary,
           ),
         );
 
@@ -64,9 +65,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text("Crear cuenta")),
+      backgroundColor: theme.colorScheme.background,
+      appBar: AppBar(
+        title: const Text("Crear cuenta"),
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -79,8 +86,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: _emailController,
               decoration: InputDecoration(
                 labelText: "Correo electrónico",
-                prefixIcon: const Icon(Icons.email),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                prefixIcon: Icon(Icons.email, color: theme.colorScheme.primary),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               keyboardType: TextInputType.emailAddress,
             ),
@@ -91,14 +100,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
               obscureText: true,
               decoration: InputDecoration(
                 labelText: "Contraseña",
-                prefixIcon: const Icon(Icons.lock),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                prefixIcon: Icon(Icons.lock, color: theme.colorScheme.primary),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 20),
 
             if (_errorMessage != null)
-              Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+              Text(
+                _errorMessage!,
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
             const SizedBox(height: 20),
 
             _isLoading
@@ -107,6 +121,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     onPressed: _registerWithEmail,
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(double.infinity, 50),
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: theme.colorScheme.onPrimary,
                     ),
                     child: const Text("Registrarme"),
                   ),
@@ -116,4 +132,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
-  

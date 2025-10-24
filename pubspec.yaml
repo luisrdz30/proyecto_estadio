@@ -33,6 +33,8 @@ flutter:
   assets:
     - assets/images/logo_estadio_sin_fondo.png
     - assets/images/about_banner.png
+    - assets/images/estadio_asientos.png
+
 
 flutter_native_splash:
   color: "#ffffff" # fondo blanco, cámbialo si quieres

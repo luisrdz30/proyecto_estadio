@@ -5,13 +5,51 @@ import '../models/zone.dart';
 import '../services/favorites_service.dart';
 import 'event_detail.dart';
 
-class FavoritesScreen extends StatelessWidget {
+class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
+
+  @override
+  State<FavoritesScreen> createState() => _FavoritesScreenState();
+}
+
+class _FavoritesScreenState extends State<FavoritesScreen> {
+  final FavoritesService _favoritesService = FavoritesService();
+
+  void _showPopup(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final favoritesService = FavoritesService();
 
     return Scaffold(
       appBar: AppBar(
@@ -20,7 +58,7 @@ class FavoritesScreen extends StatelessWidget {
         foregroundColor: theme.colorScheme.onPrimary,
       ),
       body: StreamBuilder<List<Event>>(
-        stream: favoritesService.getFavorites(),
+        stream: _favoritesService.getFavorites(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -51,7 +89,9 @@ class FavoritesScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(12),
+                        ),
                         child: Image.network(
                           fav.image,
                           height: 180,
@@ -72,7 +112,9 @@ class FavoritesScreen extends StatelessWidget {
                           children: [
                             Text(
                               fav.title,
-                              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -90,9 +132,15 @@ class FavoritesScreen extends StatelessWidget {
                             const SizedBox(height: 8),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
-                              children: const [
-                                Icon(Icons.favorite, color: Colors.red),
-                                SizedBox(width: 8),
+                              children: [
+                                GestureDetector(
+                                  onTap: () async {
+                                    await _favoritesService.removeFavorite(fav.title);
+                                    _showPopup("${fav.title} eliminado de favoritos 💔");
+                                  },
+                                  child: const Icon(Icons.favorite, color: Colors.red),
+                                ),
+                                const SizedBox(width: 8),
                               ],
                             )
                           ],
@@ -156,13 +204,17 @@ class FavoritesScreen extends StatelessWidget {
       if (context.mounted) {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => EventDetailScreen(event: fullEvent)),
+          MaterialPageRoute(
+            builder: (_) => EventDetailScreen(event: fullEvent),
+          ),
         );
       }
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No se pudo cargar el evento completo 😔")),
+          const SnackBar(
+            content: Text("No se pudo cargar el evento completo 😔"),
+          ),
         );
       }
     }

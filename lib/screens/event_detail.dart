@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/event.dart';
 import '../services/favorites_service.dart';
 import '../services/cart_service.dart';
+import 'cart_screen.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final Event event;
@@ -16,7 +17,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   late Map<String, int> ticketCounts;
   bool _isFavorite = false;
   final FavoritesService _favoritesService = FavoritesService();
-  final CartService _cartService = CartService(); // 🛒 añadido
+  final CartService _cartService = CartService();
 
   @override
   void initState() {
@@ -44,29 +45,52 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Future<void> _toggleFavorite() async {
     if (_isFavorite) {
       await _favoritesService.removeFavorite(widget.event.title);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("${widget.event.title} eliminado de favoritos 💔"),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      _showPopup("${widget.event.title} eliminado de favoritos 💔");
     } else {
       await _favoritesService.addFavorite(widget.event);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("${widget.event.title} añadido a favoritos ❤️"),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      _showPopup("${widget.event.title} añadido a favoritos ❤️");
     }
     setState(() {
       _isFavorite = !_isFavorite;
     });
   }
 
+  void _showPopup(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final event = widget.event;
 
     return Scaffold(
@@ -74,6 +98,24 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         title: Text(event.title),
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: theme.colorScheme.onPrimary,
+        actions: [
+          IconButton(
+            icon: Icon(
+              _isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: _isFavorite ? Colors.red : Colors.white,
+            ),
+            onPressed: _toggleFavorite,
+          ),
+          IconButton(
+            icon: const Icon(Icons.shopping_cart),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CartScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -97,37 +139,45 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             ),
             const SizedBox(height: 20),
 
-            // 🏷️ Título y datos
+            // 🏷️ Título
             Text(
               event.title,
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
+
             Text(
-              "${event.type} • ${event.date} • ${event.time}",
+              event.type,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            Text(
+              "${event.date} • ${event.time} • Duración aproximada: ${event.duration}",
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.7),
               ),
             ),
-            if (event.duration.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                "Duración aproximada: ${event.duration}",
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
-                ),
-              ),
-            ],
             const SizedBox(height: 16),
-            Text(
-              event.description,
-              style: theme.textTheme.bodyLarge,
+
+            Text(event.description, style: theme.textTheme.bodyLarge),
+            const SizedBox(height: 20),
+
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                'assets/images/estadio_asientos.png',
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
             ),
             const SizedBox(height: 24),
 
-            // 🎟️ Sección de localidades
             Text(
               "Localidades disponibles",
               style: theme.textTheme.titleMedium?.copyWith(
@@ -163,10 +213,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           },
                           icon: const Icon(Icons.remove_circle_outline),
                         ),
-                        Text(
-                          "$count",
-                          style: const TextStyle(fontSize: 16),
-                        ),
+                        Text("$count", style: const TextStyle(fontSize: 16)),
                         IconButton(
                           onPressed: () {
                             setState(() {
@@ -184,7 +231,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
             const SizedBox(height: 20),
 
-            // 💰 Total
+            // 💰 Total (texto y precio adaptan color al tema)
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -194,16 +241,22 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     "Total a pagar:",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
                   ),
                   Text(
                     "\$${total.toStringAsFixed(2)}",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
-                      color: theme.colorScheme.primary,
+                      color: isDark
+                          ? Colors.white
+                          : theme.colorScheme.primary,
                     ),
                   ),
                 ],
@@ -212,51 +265,27 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
             const SizedBox(height: 20),
 
-            // ❤️ Agregar / Quitar favoritos
+            // 🛒 Botón Agregar al carrito
             OutlinedButton.icon(
-              onPressed: _toggleFavorite,
-              icon: Icon(
-                _isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: _isFavorite ? Colors.red : theme.colorScheme.primary,
-              ),
-              label: Text(
-                _isFavorite ? "Quitar de favoritos" : "Agregar a favoritos",
-              ),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-                foregroundColor: theme.colorScheme.primary,
-                side: BorderSide(color: theme.colorScheme.primary, width: 2),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // 🛒 Agregar al carrito
-            OutlinedButton.icon(
-              onPressed: total > 0
-                  ? () async {
-                      await _cartService.addToCart(widget.event, ticketCounts);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            "${widget.event.title} añadido al carrito 🛒",
-                          ),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  : null,
+              onPressed: () async {
+                if (total <= 0) {
+                  _showPopup("Debes seleccionar al menos una entrada 🎟️");
+                } else {
+                  await _cartService.addToCart(widget.event, ticketCounts);
+                  _showPopup("${widget.event.title} añadido al carrito 🛒");
+                }
+              },
               icon: const Icon(Icons.add_shopping_cart),
               label: const Text("Agregar al carrito"),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
-                foregroundColor: theme.colorScheme.primary,
                 side: BorderSide(color: theme.colorScheme.primary, width: 2),
+                backgroundColor:
+                    isDark ? theme.colorScheme.primary : Colors.transparent,
+                foregroundColor:
+                    isDark ? Colors.white : theme.colorScheme.primary,
               ),
             ),
-            const SizedBox(height: 12),
-
-            // 🛒 Comprar
-            
           ],
         ),
       ),

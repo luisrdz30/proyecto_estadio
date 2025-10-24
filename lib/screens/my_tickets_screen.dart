@@ -134,7 +134,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                         Text(
                           "$date • $time",
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey[700],
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
                           ),
                         ),
                         const SizedBox(height: 8),

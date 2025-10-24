@@ -34,9 +34,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (user != null) {
         if (!user.emailVerified) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Verifica tu correo antes de ingresar."),
-              backgroundColor: Colors.orange,
+            SnackBar(
+              content: const Text("Verifica tu correo antes de ingresar."),
+              backgroundColor: Theme.of(context).colorScheme.secondary,
             ),
           );
           await _auth.signOut();
@@ -60,14 +60,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// 📨 Restablecer contraseña
   Future<void> _resetPassword(String email) async {
+    final theme = Theme.of(context);
     try {
       await _auth.sendPasswordResetEmail(email: email.trim());
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
+        SnackBar(
+          content: const Text(
             "Se ha enviado un correo para restablecer tu contraseña. Revisa tu bandeja o spam.",
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: theme.colorScheme.primary,
         ),
       );
     } on FirebaseAuthException catch (e) {
@@ -78,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ? "No existe una cuenta con este correo."
                 : "Error al enviar el correo. Intenta nuevamente.",
           ),
-          backgroundColor: Colors.red,
+          backgroundColor: theme.colorScheme.error,
         ),
       );
     }
@@ -87,6 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
   /// 🔹 Mostrar diálogo para ingresar el correo
   void _showForgotPasswordDialog() {
     final TextEditingController resetController = TextEditingController();
+    final theme = Theme.of(context);
 
     showDialog(
       context: context,
@@ -102,14 +104,20 @@ class _LoginScreenState extends State<LoginScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancelar"),
+            child: Text(
+              "Cancelar",
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               _resetPassword(resetController.text);
             },
-            child: const Text("Enviar"),
+            child: Text(
+              "Enviar",
+              style: TextStyle(color: theme.colorScheme.primary),
+            ),
           ),
         ],
       ),
@@ -118,8 +126,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.colorScheme.background,
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
         child: Column(
@@ -128,12 +138,12 @@ class _LoginScreenState extends State<LoginScreen> {
             Image.asset("assets/images/logo_estadio_sin_fondo.png", height: 120),
             const SizedBox(height: 40),
 
-            const Text(
+            Text(
               "Inicio de Sesión",
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
+                color: theme.colorScheme.primary,
               ),
             ),
             const SizedBox(height: 30),
@@ -142,7 +152,7 @@ class _LoginScreenState extends State<LoginScreen> {
               controller: _emailController,
               decoration: InputDecoration(
                 labelText: "Correo electrónico",
-                prefixIcon: const Icon(Icons.email),
+                prefixIcon: Icon(Icons.email, color: theme.colorScheme.primary),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -156,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
               obscureText: true,
               decoration: InputDecoration(
                 labelText: "Contraseña",
-                prefixIcon: const Icon(Icons.lock),
+                prefixIcon: Icon(Icons.lock, color: theme.colorScheme.primary),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -164,14 +174,13 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 10),
 
-            // 🔹 Olvidaste tu contraseña
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: _showForgotPasswordDialog,
-                child: const Text(
+                child: Text(
                   "¿Olvidaste tu contraseña?",
-                  style: TextStyle(color: Colors.deepPurple),
+                  style: TextStyle(color: theme.colorScheme.primary),
                 ),
               ),
             ),
@@ -180,7 +189,7 @@ class _LoginScreenState extends State<LoginScreen> {
             if (_errorMessage != null)
               Text(
                 _errorMessage!,
-                style: const TextStyle(color: Colors.red),
+                style: TextStyle(color: theme.colorScheme.error),
               ),
             const SizedBox(height: 10),
 
@@ -191,6 +200,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: _loginWithEmail,
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
                 ),
                 child: const Text("Iniciar sesión"),
               ),
@@ -200,7 +211,8 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 10),
 
             OutlinedButton.icon(
-              icon: const Icon(Icons.person_add_alt_1),
+              icon: Icon(Icons.person_add_alt_1,
+                  color: theme.colorScheme.primary),
               onPressed: () {
                 Navigator.push(
                   context,
@@ -209,9 +221,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 );
               },
-              label: const Text("Crear cuenta con correo"),
+              label: Text(
+                "Crear cuenta con correo",
+                style: TextStyle(color: theme.colorScheme.primary),
+              ),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
+                side: BorderSide(color: theme.colorScheme.primary),
               ),
             ),
           ],
