@@ -13,6 +13,15 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_native_splash: ^2.4.6
   table_calendar: ^3.2.0
+  firebase_core: ^4.1.1
+  firebase_auth: ^6.1.0
+  cloud_firestore: ^6.0.2
+  intl_phone_field: ^3.2.0
+  qr_flutter: ^4.1.0
+  share_plus: ^12.0.0
+  flutter_launcher_icons: ^0.14.4
+  
+
 
 dev_dependencies:
   flutter_test:
@@ -23,9 +32,18 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/logo_estadio_sin_fondo.png
+    - assets/images/about_banner.png
+    - assets/images/estadio_asientos.png
+
 
 flutter_native_splash:
   color: "#ffffff" # fondo blanco, cámbialo si quieres
   image: assets/images/logo_estadio_sin_fondo.png
   android: true
   ios: true
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo_estadio_sin_fondo.png"
+  remove_alpha_ios: true

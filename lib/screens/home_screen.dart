@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:proyecto_estadio/screens/cart_screen.dart';
 import '../models/event.dart';
+import '../services/firestore_service.dart';
 import 'event_card.dart';
+import 'about_screen.dart';
+import 'calendar_screen.dart';
+import 'my_tickets_screen.dart';
+import 'favorites_screen.dart';
+import '../services/cart_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final bool isDarkMode;
   final ValueChanged<bool> onThemeChanged;
 
@@ -13,98 +21,243 @@ class HomeScreen extends StatelessWidget {
   });
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  final CartService _cartService = CartService();
+
+  @override
   Widget build(BuildContext context) {
-    // 🔥 Ejemplo de datos dummy (luego vendrán de Firebase)
-    final List<Event> events = [
-      Event(
-        title: "Concierto Rock Fest",
-        date: "25 Octubre 2025",
-        place: "Estadio Olímpico",
-        image: "https://picsum.photos/400/200?random=1",
-        description: "Un concierto con las mejores bandas de rock.",
-        price: 50.0,
-      ),
-      Event(
-        title: "Partido Final Copa",
-        date: "30 Octubre 2025",
-        place: "Coliseo Central",
-        image: "https://picsum.photos/400/200?random=2",
-        description: "La gran final de la Copa Nacional.",
-        price: 30.0,
-      ),
-      Event(
-        title: "Obra de Teatro",
-        date: "5 Noviembre 2025",
-        place: "Teatro Nacional",
-        image: "https://picsum.photos/400/200?random=3",
-        description: "Una obra clásica con actores reconocidos.",
-        price: 25.0,
-      ),
-    ];
+    final theme = Theme.of(context);
+    final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
+      // 👇 Fondo base del Scaffold (blanco puro o negro azulado)
+      backgroundColor: theme.brightness == Brightness.light
+          ? Colors.white
+          : const Color(0xFF0D1826),
+
       drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
+        child: Column(
           children: [
             UserAccountsDrawerHeader(
-              decoration: const BoxDecoration(color: Colors.deepPurple),
-              currentAccountPicture: const CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Icon(Icons.person, size: 40, color: Colors.deepPurple),
+              decoration: BoxDecoration(color: theme.colorScheme.primary),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: theme.colorScheme.onPrimary,
+                child: Icon(Icons.person, size: 40, color: theme.colorScheme.primary),
               ),
-              accountName: const Text("Usuario"),
-              accountEmail: const Text("usuario@email.com"),
+              accountName: Text(
+                user?.displayName ?? "Usuario",
+                style: TextStyle(color: theme.colorScheme.onPrimary),
+              ),
+              accountEmail: Text(
+                user?.email ?? user?.phoneNumber ?? "Sin correo asociado",
+                style: TextStyle(color: theme.colorScheme.onPrimary),
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.event),
               title: const Text("Eventos"),
-              onTap: () {
-                Navigator.pop(context);
-              },
+              onTap: () => Navigator.pop(context),
             ),
             ListTile(
-              leading: const Icon(Icons.info),
-              title: const Text("Quiénes somos"),
+              leading: const Icon(Icons.calendar_today),
+              title: const Text("Calendario"),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CalendarScreen()),
+                );
               },
             ),
             ListTile(
               leading: const Icon(Icons.favorite),
               title: const Text("Favoritos"),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const FavoritesScreen()),
+                );
               },
             ),
             const Divider(),
-            SwitchListTile(
-              title: const Text("Modo oscuro"),
-              secondary: const Icon(Icons.dark_mode),
-              value: isDarkMode,
-              onChanged: onThemeChanged,
+            ListTile(
+              leading: const Icon(Icons.confirmation_num),
+              title: const Text('Mis Entradas'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MyTicketsScreen()),
+                );
+              },
             ),
-            const Divider(),
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text("Cerrar sesión"),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
+                await FirebaseAuth.instance.signOut();
+              },
+            ),
+            const Spacer(),
+            SwitchListTile(
+              title: const Text("Modo oscuro"),
+              secondary: const Icon(Icons.dark_mode),
+              value: widget.isDarkMode,
+              onChanged: (value) {
+                Navigator.pop(context);
+                widget.onThemeChanged(value);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text("Quiénes somos"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AboutScreen()),
+                );
               },
             ),
           ],
         ),
       ),
+
       appBar: AppBar(
         title: const Text("Eventos"),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_today),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CalendarScreen()),
+              );
+            },
+          ),
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _cartService.getCartItems(),
+            builder: (context, snapshot) {
+              final count = snapshot.data?.length ?? 0;
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_cart),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CartScreen()),
+                      );
+                    },
+                  ),
+                  if (count > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.error,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          "$count",
+                          style: TextStyle(
+                            color: theme.colorScheme.onError,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: events.length,
-        itemBuilder: (context, index) {
-          return EventCard(event: events[index]);
-        },
+
+      body: Column(
+        children: [
+          // 🔍 Barra de búsqueda
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (value) {
+                setState(() => _searchQuery = value.trim().toLowerCase());
+              },
+              style: TextStyle(color: theme.colorScheme.onSurface),
+              decoration: InputDecoration(
+                hintText: "Buscar evento o tipo (fútbol, concierto...)",
+                hintStyle: TextStyle(
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                ),
+                prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
+                filled: true,
+                fillColor: theme.brightness == Brightness.light
+                    ? Colors.white
+                    : theme.colorScheme.surface.withOpacity(0.9),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+
+          // 🔥 Lista de eventos
+          Expanded(
+            child: Container(
+              // 👇 Fondo de toda la lista (sin el celeste)
+              color: theme.brightness == Brightness.light
+                  ? Colors.white
+                  : theme.colorScheme.surface.withOpacity(0.05),
+
+              child: StreamBuilder<List<Event>>(
+                stream: _firestoreService.getEvents(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return const Center(child: Text("Error al cargar los eventos"));
+                  }
+
+                  final events = snapshot.data ?? [];
+                  if (events.isEmpty) {
+                    return const Center(child: Text("No hay eventos disponibles"));
+                  }
+
+                  final filteredEvents = events.where((event) {
+                    final title = event.title.toLowerCase();
+                    final type = event.type.toLowerCase();
+                    return title.contains(_searchQuery) || type.contains(_searchQuery);
+                  }).toList();
+
+                  if (filteredEvents.isEmpty) {
+                    return const Center(child: Text("No se encontraron resultados"));
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: filteredEvents.length,
+                    itemBuilder: (context, index) {
+                      final event = filteredEvents[index];
+                      return EventCard(event: event);
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
