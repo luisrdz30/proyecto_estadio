@@ -125,18 +125,46 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             // 🖼 Imagen principal
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                event.image,
-                width: double.infinity,
-                height: 220,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  height: 220,
-                  color: Colors.grey.shade300,
-                  child: const Icon(Icons.broken_image, size: 50),
-                ),
+              child: Builder(
+                builder: (context) {
+                  // Si el campo de imagen está vacío o nulo, usa una imagen local por defecto
+                  if (widget.event.image.isEmpty) {
+                    return Image.asset(
+                      'assets/images/logo_estadio_sin_fondo.png',
+                      width: double.infinity,
+                      height: 220,
+                      fit: BoxFit.cover,
+                    );
+                  }
+
+                  // Si tiene una URL (como las de GitHub), intenta cargarla
+                  return Image.network(
+                    widget.event.image,
+                    width: double.infinity,
+                    height: 220,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        height: 220,
+                        color: Colors.grey.shade200,
+                        child: const Center(child: CircularProgressIndicator()),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      // Si la URL falla, carga tu logo local
+                      return Image.asset(
+                        'assets/images/logo_estadio_sin_fondo.png',
+                        width: double.infinity,
+                        height: 220,
+                        fit: BoxFit.cover,
+                      );
+                    },
+                  );
+                },
               ),
             ),
+
             const SizedBox(height: 20),
 
             // 🏷️ Título
