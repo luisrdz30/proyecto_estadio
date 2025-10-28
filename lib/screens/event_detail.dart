@@ -186,14 +186,27 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             ),
             const SizedBox(height: 10),
 
+            // 🔹 Mostrar cada zona con precio
             ...event.zones.map((zone) {
               final count = ticketCounts[zone.name] ?? 0;
               return Card(
                 elevation: 2,
                 margin: const EdgeInsets.symmetric(vertical: 6),
                 child: ListTile(
-                  title: Text(zone.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(zone.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        "\$${zone.price.toStringAsFixed(2)}",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
                   subtitle: Text(
                     "Capacidad: ${zone.capacity} personas",
                     style: const TextStyle(fontSize: 13),
@@ -231,7 +244,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
             const SizedBox(height: 20),
 
-            // 💰 Total (texto y precio adaptan color al tema)
+            // 💰 Total
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(

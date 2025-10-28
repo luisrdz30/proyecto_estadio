@@ -43,8 +43,8 @@ class _CartScreenState extends State<CartScreen> {
                 context: context,
                 builder: (context) => AlertDialog(
                   title: const Text("Vaciar carrito"),
-                  content: const Text(
-                      "¿Deseas eliminar todos los productos del carrito?"),
+                  content:
+                      const Text("¿Deseas eliminar todos los productos del carrito?"),
                   actions: [
                     TextButton(
                         onPressed: () => Navigator.pop(context, false),
@@ -135,14 +135,12 @@ class _CartScreenState extends State<CartScreen> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         title,
                                         style: theme.textTheme.titleMedium
-                                            ?.copyWith(
-                                                fontWeight: FontWeight.bold),
+                                            ?.copyWith(fontWeight: FontWeight.bold),
                                       ),
                                       const SizedBox(height: 4),
                                       Text("$date • $time"),
@@ -150,16 +148,17 @@ class _CartScreenState extends State<CartScreen> {
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.close,
-                                      color: Colors.redAccent),
+                                  icon:
+                                      const Icon(Icons.close, color: Colors.redAccent),
                                   onPressed: () async {
                                     await _cartService.removeFromCart(title);
                                     if (mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(SnackBar(
-                                        content: Text(
-                                            "$title eliminado del carrito."),
-                                      ));
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content:
+                                              Text("$title eliminado del carrito."),
+                                        ),
+                                      );
                                     }
                                   },
                                 ),
@@ -175,8 +174,7 @@ class _CartScreenState extends State<CartScreen> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                        "${zone['name']} (${zone['count']}x)"),
+                                    Text("${zone['name']} (${zone['count']}x)"),
                                     Text(
                                       "\$${(zone['subtotal'] ?? 0).toStringAsFixed(2)}",
                                       style: TextStyle(
@@ -323,27 +321,47 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
+  /// ✅ Función que transforma “27 de octubre de 2025” + “20:00” → DateTime
+  DateTime _parseDateTime(String dateStr, String timeStr) {
+    final meses = {
+      'enero': 1,
+      'febrero': 2,
+      'marzo': 3,
+      'abril': 4,
+      'mayo': 5,
+      'junio': 6,
+      'julio': 7,
+      'agosto': 8,
+      'septiembre': 9,
+      'octubre': 10,
+      'noviembre': 11,
+      'diciembre': 12,
+    };
+
+    try {
+      final partes = dateStr.split(' ');
+      if (partes.length < 4) return DateTime.now();
+
+      final dia = int.parse(partes[0]);
+      final mes = meses[partes[2].toLowerCase()] ?? 1;
+      final anio = int.parse(partes[4]); // “27 de octubre de 2025”
+
+      final horaMin = timeStr.split(':');
+      final hora = int.parse(horaMin[0]);
+      final minuto = int.parse(horaMin[1]);
+
+      return DateTime(anio, mes, dia, hora, minuto);
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
+
   Future<void> _generateTickets(String uid) async {
     final userCart = await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .collection('cart')
         .get();
-
-    const meses = {
-      'enero': '01',
-      'febrero': '02',
-      'marzo': '03',
-      'abril': '04',
-      'mayo': '05',
-      'junio': '06',
-      'julio': '07',
-      'agosto': '08',
-      'septiembre': '09',
-      'octubre': '10',
-      'noviembre': '11',
-      'diciembre': '12',
-    };
 
     for (final doc in userCart.docs) {
       final data = doc.data();
@@ -353,52 +371,37 @@ class _CartScreenState extends State<CartScreen> {
       final image = data['image'];
       final zones = (data['zones'] as List<dynamic>?) ?? [];
 
-      DateTime? eventDateTime;
-      try {
-        final partes = date.split(' ');
-        if (partes.length == 3) {
-          final dia = partes[0];
-          final mes = meses[partes[1].toLowerCase()] ?? '01';
-          final anio = partes[2];
-          final hora = time.split(':')[0];
-          final minuto = time.split(':')[1];
-          eventDateTime = DateTime(
-            int.parse(anio),
-            int.parse(mes),
-            int.parse(dia),
-            int.parse(hora),
-            int.parse(minuto),
-          );
-        } else {
-          eventDateTime = DateTime.now();
-        }
-      } catch (_) {
-        eventDateTime = DateTime.now();
-      }
+      // ✅ Convierte texto a DateTime (Timestamp real)
+      final eventDateTime = _parseDateTime(date, time);
 
       for (final z in zones) {
         final zone = Map<String, dynamic>.from(z);
-        final qrId = _uuid.v4();
-        final qrData = "$uid|$title|${zone['name']}|$qrId";
+        final count = (zone['count'] ?? 1) as int;
 
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .collection('tickets')
-            .add({
-          'eventTitle': title,
-          'zone': zone['name'],
-          'count': zone['count'],
-          'price': zone['price'],
-          'date': date,
-          'time': time,
-          'image': image,
-          'qrId': qrId,
-          'qrData': qrData,
-          'eventDateTime': eventDateTime,
-          'createdAt': FieldValue.serverTimestamp(),
-          'used': false,
-        });
+        // ✅ Genera un ticket por cada entrada comprada
+        for (int i = 0; i < count; i++) {
+          final qrId = _uuid.v4();
+          final qrData = "$uid|$title|${zone['name']}|$qrId";
+
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid)
+              .collection('tickets')
+              .add({
+            'eventTitle': title,
+            'zone': zone['name'],
+            'count': 1, // un ticket por documento
+            'price': zone['price'],
+            'date': date,
+            'time': time,
+            'image': image,
+            'qrId': qrId,
+            'qrData': qrData,
+            'eventDateTime': eventDateTime,
+            'createdAt': FieldValue.serverTimestamp(),
+            'used': false,
+          });
+        }
       }
     }
   }
@@ -458,7 +461,8 @@ class _CartScreenState extends State<CartScreen> {
                           children: [
                             TweenAnimationBuilder<double>(
                               tween: Tween(begin: 0.7, end: 1.0),
-                              duration: const Duration(milliseconds: 600),
+                              duration:
+                                  const Duration(milliseconds: 600),
                               curve: Curves.elasticOut,
                               builder: (context, scale, child) =>
                                   Transform.scale(

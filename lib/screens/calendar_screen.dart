@@ -39,17 +39,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
           final events = snapshot.data!;
 
-          // 🔹 Mapeamos fechas con eventos
+          // 🔹 Agrupamos eventos por fecha (basado en eventDate tipo Timestamp)
           final Map<DateTime, List<Event>> eventsByDate = {};
           for (var e in events) {
-            final parsedDate = _parseDate(e.date);
-            if (parsedDate != null) {
-              final key = DateTime(parsedDate.year, parsedDate.month, parsedDate.day);
-              eventsByDate.putIfAbsent(key, () => []).add(e);
+            if (e.eventDate != null) {
+              final date = DateTime(
+                e.eventDate!.year,
+                e.eventDate!.month,
+                e.eventDate!.day,
+              );
+              eventsByDate.putIfAbsent(date, () => []).add(e);
             }
           }
 
-          // 🔹 Filtrar eventos de la fecha seleccionada
+          // 🔹 Filtrar eventos según día seleccionado
           List<Event> filteredEvents = [];
           if (_selectedDay != null) {
             final key = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
@@ -173,41 +176,5 @@ class _CalendarScreenState extends State<CalendarScreen> {
         },
       ),
     );
-  }
-
-  /// 🔹 Convierte “25 Octubre 2025” → DateTime(2025,10,25)
-  DateTime? _parseDate(String dateStr) {
-    try {
-      final parts = dateStr.trim().split(' ');
-      if (parts.length < 3) return null;
-
-      final day = int.tryParse(parts[0]);
-      final monthName = parts[1].toLowerCase();
-      final year = int.tryParse(parts[2]);
-
-      if (day == null || year == null) return null;
-
-      const months = {
-        'enero': 1,
-        'febrero': 2,
-        'marzo': 3,
-        'abril': 4,
-        'mayo': 5,
-        'junio': 6,
-        'julio': 7,
-        'agosto': 8,
-        'septiembre': 9,
-        'octubre': 10,
-        'noviembre': 11,
-        'diciembre': 12,
-      };
-
-      final month = months[monthName];
-      if (month == null) return null;
-
-      return DateTime(year, month, day);
-    } catch (_) {
-      return null;
-    }
   }
 }
