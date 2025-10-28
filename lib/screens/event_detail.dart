@@ -196,23 +196,36 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   title: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(zone.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                      Text(
-                        "\$${zone.price.toStringAsFixed(2)}",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
+                      Flexible(
+                        child: Text(
+                          zone.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          "\$${zone.price.toStringAsFixed(2)}",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11.5, // 🔹 más pequeño y elegante
+                            color: theme.colorScheme.primary.withOpacity(0.9),
+                          ),
                         ),
                       ),
                     ],
                   ),
                   subtitle: Text(
                     "Capacidad: ${zone.capacity} personas",
-                    style: const TextStyle(fontSize: 13),
+                    style: const TextStyle(fontSize: 12.5),
                   ),
                   trailing: SizedBox(
-                    width: 140,
+                    width: 120,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -224,16 +237,19 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               });
                             }
                           },
-                          icon: const Icon(Icons.remove_circle_outline),
+                          icon: const Icon(Icons.remove_circle_outline, size: 20),
                         ),
-                        Text("$count", style: const TextStyle(fontSize: 16)),
+                        Text(
+                          "$count",
+                          style: const TextStyle(fontSize: 14),
+                        ),
                         IconButton(
                           onPressed: () {
                             setState(() {
                               ticketCounts[zone.name] = count + 1;
                             });
                           },
-                          icon: const Icon(Icons.add_circle_outline),
+                          icon: const Icon(Icons.add_circle_outline, size: 20),
                         ),
                       ],
                     ),
@@ -241,6 +257,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ),
               );
             }),
+
 
             const SizedBox(height: 20),
 
