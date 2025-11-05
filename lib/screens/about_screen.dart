@@ -103,7 +103,7 @@ class AboutScreen extends StatelessWidget {
                   ),
                 ),
                 child: const Text(
-                  "Explorar eventos",
+                  "Volver al Menú",
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),

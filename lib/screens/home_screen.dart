@@ -8,7 +8,9 @@ import 'about_screen.dart';
 import 'calendar_screen.dart';
 import 'my_tickets_screen.dart';
 import 'favorites_screen.dart';
+import 'location_screen.dart'; // 👈 nueva importación
 import '../services/cart_service.dart';
+import 'personal_data_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isDarkMode;
@@ -27,8 +29,34 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
   final CartService _cartService = CartService();
+
+  String _searchQuery = '';
+  String _selectedType = 'Todos';
+  List<String> _eventTypes = ['Todos'];
+
+  int _currentPage = 0;
+  static const int _eventsPerPage = 10;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEventTypes();
+  }
+
+  Future<void> _loadEventTypes() async {
+    final allEvents = await _firestoreService.getEvents().first;
+    final types = allEvents.map((e) => e.type).toSet().toList()..sort();
+    setState(() {
+      _eventTypes = ['Todos', ...types];
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +64,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      // 👇 Fondo base del Scaffold (blanco puro o negro azulado)
       backgroundColor: theme.brightness == Brightness.light
           ? Colors.white
           : const Color(0xFF0D1826),
@@ -46,9 +73,17 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             UserAccountsDrawerHeader(
               decoration: BoxDecoration(color: theme.colorScheme.primary),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: theme.colorScheme.onPrimary,
-                child: Icon(Icons.person, size: 40, color: theme.colorScheme.primary),
+              currentAccountPicture: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PersonalDataScreen()),
+                  );
+                },
+                child: CircleAvatar(
+                  backgroundColor: theme.colorScheme.onPrimary,
+                  child: Icon(Icons.person, size: 40, color: theme.colorScheme.primary),
+                ),
               ),
               accountName: Text(
                 user?.displayName ?? "Usuario",
@@ -81,6 +116,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const FavoritesScreen()),
+                );
+              },
+            ),
+            // 👇 NUEVA OPCIÓN: Ubicación del estadio
+            ListTile(
+              leading: const Icon(Icons.location_on),
+              title: const Text("Ubicación del Estadio"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LocationScreen()),
                 );
               },
             ),
@@ -183,81 +229,124 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      body: Column(
-        children: [
-          // 🔍 Barra de búsqueda
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) {
-                setState(() => _searchQuery = value.trim().toLowerCase());
-              },
-              style: TextStyle(color: theme.colorScheme.onSurface),
-              decoration: InputDecoration(
-                hintText: "Buscar evento o tipo (fútbol, concierto...)",
-                hintStyle: TextStyle(
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
-                ),
-                prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
-                filled: true,
-                fillColor: theme.brightness == Brightness.light
-                    ? Colors.white
-                    : theme.colorScheme.surface.withOpacity(0.9),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+      // 🔥 Lista principal de eventos
+      body: StreamBuilder<List<Event>>(
+        stream: _firestoreService.getEvents(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return const Center(child: Text("Error al cargar los eventos"));
+          }
+
+          final allEvents = snapshot.data ?? [];
+          if (allEvents.isEmpty) {
+            return const Center(child: Text("No hay eventos disponibles"));
+          }
+
+          final filteredEvents = allEvents.where((event) {
+            final matchesSearch = event.title.toLowerCase().contains(_searchQuery) ||
+                event.type.toLowerCase().contains(_searchQuery);
+            final matchesType = _selectedType == 'Todos' ||
+                event.type.toLowerCase() == _selectedType.toLowerCase();
+            return matchesSearch && matchesType;
+          }).toList();
+
+          final totalPages = (filteredEvents.length / _eventsPerPage).ceil();
+          final startIndex = _currentPage * _eventsPerPage;
+          final endIndex = (_currentPage + 1) * _eventsPerPage;
+          final currentEvents = filteredEvents.sublist(
+            startIndex,
+            endIndex > filteredEvents.length ? filteredEvents.length : endIndex,
+          );
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value.trim().toLowerCase();
+                      _currentPage = 0;
+                    });
+                  },
+                  style: TextStyle(color: theme.colorScheme.onSurface),
+                  decoration: InputDecoration(
+                    hintText: "Buscar evento o tipo...",
+                    hintStyle: TextStyle(
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                    prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
+                    filled: true,
+                    fillColor: theme.brightness == Brightness.light
+                        ? Colors.white
+                        : theme.colorScheme.surface.withOpacity(0.9),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-
-          // 🔥 Lista de eventos
-          Expanded(
-            child: Container(
-              // 👇 Fondo de toda la lista (sin el celeste)
-              color: theme.brightness == Brightness.light
-                  ? Colors.white
-                  : theme.colorScheme.surface.withOpacity(0.05),
-
-              child: StreamBuilder<List<Event>>(
-                stream: _firestoreService.getEvents(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return const Center(child: Text("Error al cargar los eventos"));
-                  }
-
-                  final events = snapshot.data ?? [];
-                  if (events.isEmpty) {
-                    return const Center(child: Text("No hay eventos disponibles"));
-                  }
-
-                  final filteredEvents = events.where((event) {
-                    final title = event.title.toLowerCase();
-                    final type = event.type.toLowerCase();
-                    return title.contains(_searchQuery) || type.contains(_searchQuery);
-                  }).toList();
-
-                  if (filteredEvents.isEmpty) {
-                    return const Center(child: Text("No se encontraron resultados"));
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(16.0),
-                    itemCount: filteredEvents.length,
-                    itemBuilder: (context, index) {
-                      final event = filteredEvents[index];
-                      return EventCard(event: event);
-                    },
-                  );
-                },
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: DropdownButtonFormField<String>(
+                  value: _selectedType,
+                  decoration: InputDecoration(
+                    labelText: "Filtrar por tipo",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  ),
+                  items: _eventTypes
+                      .map((type) => DropdownMenuItem(value: type, child: Text(type)))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedType = value!;
+                      _currentPage = 0;
+                    });
+                  },
+                ),
               ),
-            ),
-          ),
-        ],
+              const SizedBox(height: 10),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: currentEvents.length,
+                  itemBuilder: (context, index) {
+                    final event = currentEvents[index];
+                    return EventCard(event: event);
+                  },
+                ),
+              ),
+              if (totalPages > 1)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new),
+                        onPressed: _currentPage > 0
+                            ? () => setState(() => _currentPage--)
+                            : null,
+                      ),
+                      Text("Página ${_currentPage + 1} de $totalPages"),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_forward_ios),
+                        onPressed: _currentPage < totalPages - 1
+                            ? () => setState(() => _currentPage++)
+                            : null,
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }

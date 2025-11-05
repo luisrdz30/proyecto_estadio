@@ -28,9 +28,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   Future<void> _checkIfFavorite() async {
     final exists = await _favoritesService.isFavorite(widget.event.title);
-    setState(() {
-      _isFavorite = exists;
-    });
+    setState(() => _isFavorite = exists);
   }
 
   double get total {
@@ -45,45 +43,86 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Future<void> _toggleFavorite() async {
     if (_isFavorite) {
       await _favoritesService.removeFavorite(widget.event.title);
-      _showPopup("${widget.event.title} eliminado de favoritos 💔");
+      _showPopup(
+        title: "Eliminado",
+        message: "${widget.event.title} fue eliminado de favoritos 💔",
+        icon: Icons.favorite_border,
+        color: Colors.redAccent,
+      );
     } else {
       await _favoritesService.addFavorite(widget.event);
-      _showPopup("${widget.event.title} añadido a favoritos ❤️");
+      _showPopup(
+        title: "Añadido",
+        message: "${widget.event.title} se añadió a tus favoritos ❤️",
+        icon: Icons.favorite,
+        color: Colors.pinkAccent,
+      );
     }
-    setState(() {
-      _isFavorite = !_isFavorite;
-    });
+    setState(() => _isFavorite = !_isFavorite);
   }
 
-  void _showPopup(String message) {
-    showDialog(
+  /// 🌟 Popup elegante reutilizable
+  Future<void> _showPopup({
+    required String title,
+    required String message,
+    required IconData icon,
+    required Color color,
+  }) async {
+    await showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Align(
-                alignment: Alignment.topRight,
-                child: IconButton(
-                  icon: const Icon(Icons.close, size: 20),
-                  onPressed: () => Navigator.pop(context),
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 250),
+            scale: 1.05,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Align(
+                  alignment: Alignment.topRight,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(Icons.close, color: Colors.grey, size: 22),
+                  ),
                 ),
-              ),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
-              ),
-            ],
+                const SizedBox(height: 5),
+                Icon(icon, color: color, size: 52),
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16, height: 1.4),
+                ),
+                const SizedBox(height: 15),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: color.withOpacity(0.85),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text("Cerrar"),
+                ),
+              ],
+            ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -127,7 +166,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               borderRadius: BorderRadius.circular(12),
               child: Builder(
                 builder: (context) {
-                  // Si el campo de imagen está vacío o nulo, usa una imagen local por defecto
                   if (widget.event.image.isEmpty) {
                     return Image.asset(
                       'assets/images/logo_estadio_sin_fondo.png',
@@ -137,34 +175,29 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     );
                   }
 
-                  // Si tiene una URL (como las de GitHub), intenta cargarla
                   return Image.network(
                     widget.event.image,
                     width: double.infinity,
                     height: 220,
                     fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
                       return Container(
                         height: 220,
                         color: Colors.grey.shade200,
                         child: const Center(child: CircularProgressIndicator()),
                       );
                     },
-                    errorBuilder: (context, error, stackTrace) {
-                      // Si la URL falla, carga tu logo local
-                      return Image.asset(
-                        'assets/images/logo_estadio_sin_fondo.png',
-                        width: double.infinity,
-                        height: 220,
-                        fit: BoxFit.cover,
-                      );
-                    },
+                    errorBuilder: (_, __, ___) => Image.asset(
+                      'assets/images/logo_estadio_sin_fondo.png',
+                      width: double.infinity,
+                      height: 220,
+                      fit: BoxFit.cover,
+                    ),
                   );
                 },
               ),
             ),
-
             const SizedBox(height: 20),
 
             // 🏷️ Título
@@ -175,7 +208,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
             ),
             const SizedBox(height: 4),
-
             Text(
               event.type,
               style: theme.textTheme.titleMedium?.copyWith(
@@ -184,9 +216,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
             ),
             const SizedBox(height: 8),
-
             Text(
-              "${event.date} • ${event.time} • Duración aproximada: ${event.duration}",
+              "${event.date} • ${event.time} • Duración: ${event.duration}",
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.7),
               ),
@@ -214,7 +245,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             ),
             const SizedBox(height: 10),
 
-            // 🔹 Mostrar cada zona con precio
+            // 🔹 Zonas
             ...event.zones.map((zone) {
               final count = ticketCounts[zone.name] ?? 0;
               return Card(
@@ -227,45 +258,41 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       Flexible(
                         child: Text(
                           zone.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: 6),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          "\$${zone.price.toStringAsFixed(2)}",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 11.5, // 🔹 más pequeño y elegante
-                            color: theme.colorScheme.primary.withOpacity(0.9),
-                          ),
+                      Text(
+                        "\$${zone.price.toStringAsFixed(2)}",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                          color: theme.colorScheme.primary,
                         ),
                       ),
                     ],
                   ),
-                  subtitle: Text(
-                    "Capacidad: ${zone.capacity} personas",
-                    style: const TextStyle(fontSize: 12.5),
-                  ),
+                  subtitle: Text("Capacidad: ${zone.capacity} personas"),
                   trailing: SizedBox(
                     width: 120,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
+                        // 🔸 Botón menos: deshabilitado si count == 0
                         IconButton(
-                          onPressed: () {
-                            if (count > 0) {
-                              setState(() {
-                                ticketCounts[zone.name] = count - 1;
-                              });
-                            }
-                          },
-                          icon: const Icon(Icons.remove_circle_outline, size: 20),
+                          onPressed: count > 0
+                              ? () {
+                                  setState(() => ticketCounts[zone.name] = count - 1);
+                                }
+                              : null,
+                          icon: Icon(
+                            Icons.remove_circle_outline,
+                            size: 20,
+                            color: count > 0
+                                ? theme.colorScheme.error
+                                : Colors.grey.withOpacity(0.4),
+                          ),
                         ),
                         Text(
                           "$count",
@@ -273,11 +300,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         ),
                         IconButton(
                           onPressed: () {
-                            setState(() {
-                              ticketCounts[zone.name] = count + 1;
-                            });
+                            setState(() => ticketCounts[zone.name] = count + 1);
                           },
-                          icon: const Icon(Icons.add_circle_outline, size: 20),
+                          icon: Icon(Icons.add_circle_outline,
+                              size: 20, color: theme.colorScheme.primary),
                         ),
                       ],
                     ),
@@ -285,7 +311,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ),
               );
             }),
-
 
             const SizedBox(height: 20),
 
@@ -299,38 +324,39 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    "Total a pagar:",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: isDark ? Colors.white : Colors.black,
-                    ),
-                  ),
+                  const Text("Total a pagar:",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   Text(
                     "\$${total.toStringAsFixed(2)}",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
-                      color: isDark
-                          ? Colors.white
-                          : theme.colorScheme.primary,
+                      color: theme.colorScheme.primary,
                     ),
                   ),
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
 
             // 🛒 Botón Agregar al carrito
             OutlinedButton.icon(
               onPressed: () async {
                 if (total <= 0) {
-                  _showPopup("Debes seleccionar al menos una entrada 🎟️");
+                  _showPopup(
+                    title: "Atención",
+                    message: "Debes seleccionar al menos una entrada 🎟️",
+                    icon: Icons.info_outline,
+                    color: Colors.orangeAccent,
+                  );
                 } else {
                   await _cartService.addToCart(widget.event, ticketCounts);
-                  _showPopup("${widget.event.title} añadido al carrito 🛒");
+                  _showPopup(
+                    title: "Añadido",
+                    message: "${widget.event.title} fue añadido al carrito 🛒",
+                    icon: Icons.shopping_cart,
+                    color: Colors.green,
+                  );
                 }
               },
               icon: const Icon(Icons.add_shopping_cart),
