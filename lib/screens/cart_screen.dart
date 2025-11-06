@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
 import '../services/cart_service.dart';
 import 'personal_data_screen.dart';
-import '../theme_sync.dart'; // 👈 para usar el tema sincronizado
+import '../theme_sync.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -20,8 +20,8 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = ThemeSync.currentTheme; // 👈 tema sincronizado global
-    ThemeSync.applyThemeSilently(ThemeSync.isDarkMode); // 👈 mantiene sincronía
+    final theme = ThemeSync.currentTheme;
+    ThemeSync.applyThemeSilently(ThemeSync.isDarkMode);
 
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
@@ -186,7 +186,8 @@ class _CartScreenState extends State<CartScreen> {
                               ),
                               const Divider(),
                               ...zones.map((z) {
-                                final zone = Map<String, dynamic>.from(z);
+                                final zone =
+                                    Map<String, dynamic>.from(z);
                                 return Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
@@ -202,7 +203,8 @@ class _CartScreenState extends State<CartScreen> {
                                       "\$${(zone['subtotal'] ?? 0).toStringAsFixed(2)}",
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        color: theme.colorScheme.onSurface,
+                                        color:
+                                            theme.colorScheme.onSurface,
                                       ),
                                     ),
                                   ],
@@ -213,7 +215,8 @@ class _CartScreenState extends State<CartScreen> {
                                 alignment: Alignment.centerRight,
                                 child: Text(
                                   "Total evento: \$${total.toStringAsFixed(2)}",
-                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                  style: theme.textTheme.bodyMedium
+                                      ?.copyWith(
                                     fontWeight: FontWeight.bold,
                                     color: theme.colorScheme.onSurface,
                                   ),
@@ -235,8 +238,8 @@ class _CartScreenState extends State<CartScreen> {
                     color: theme.colorScheme.primary.withOpacity(0.1),
                     border: Border(
                       top: BorderSide(
-                        color:
-                            theme.colorScheme.primary.withOpacity(0.2),
+                        color: theme.colorScheme.primary
+                            .withOpacity(0.2),
                       ),
                     ),
                   ),
@@ -266,27 +269,19 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                       const SizedBox(height: 10),
 
-                      // Checkbox "¿Desea factura?"
                       CheckboxListTile(
                         value: _wantsInvoice,
-                        onChanged: (v) =>
-                            setState(() => _wantsInvoice = v ?? false),
+                        onChanged: (v) => setState(() => _wantsInvoice = v ?? false),
                         title: Text(
                           "¿Desea factura?",
-                          style: TextStyle(
-                            color: theme.colorScheme.onSurface,
-                          ),
+                          style: TextStyle(color: theme.colorScheme.onSurface),
                         ),
                         controlAffinity: ListTileControlAffinity.leading,
                       ),
 
                       ElevatedButton.icon(
                         onPressed: totalGeneral > 0
-                            ? () async => _handlePayment(
-                                  context,
-                                  uid,
-                                  totalGeneral,
-                                )
+                            ? () async => _handlePayment(context, uid, totalGeneral)
                             : null,
                         icon: const Icon(Icons.payment),
                         label: const Text("Proceder al pago"),
@@ -307,7 +302,7 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  // 🔽 resto del código idéntico (sin cambios de tema) 🔽
+  // 🔹 Manejo del pago
   Future<void> _handlePayment(
       BuildContext context, String uid, double totalGeneral) async {
     if (_wantsInvoice) {
@@ -338,46 +333,105 @@ class _CartScreenState extends State<CartScreen> {
     _showPaymentPopup(context, uid);
   }
 
+  // 🔹 Crear factura
   Future<void> _createInvoice(String uid, double totalGeneral) async {
-    final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
-    final personalData =
-        await userRef.collection('personalData').doc('info').get();
-    final cartDocs = await userRef.collection('cart').get();
+    try {
+      final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+      final personalDataSnap =
+          await userRef.collection('personalData').doc('info').get();
+      final cartDocs = await userRef.collection('cart').get();
 
-    final email = personalData['email'] ??
-        FirebaseAuth.instance.currentUser?.email ??
-        'sin-correo';
+      if (!personalDataSnap.exists) {
+        debugPrint("⚠️ No se encontró información personal del usuario.");
+        return;
+      }
 
-    await FirebaseFirestore.instance.collection('facturas').add({
-      'userId': uid,
-      'userName': personalData['name'] ?? '',
-      'email': email,
-      'idNumber': personalData['idNumber'] ?? '',
-      'phone': personalData['phone'] ?? '',
-      'address': personalData['address'] ?? '',
-      'total': totalGeneral,
-      'createdAt': FieldValue.serverTimestamp(),
-      'items': cartDocs.docs.map((e) => e.data()).toList(),
-    });
+      final personalData = personalDataSnap.data() ?? {};
+
+      final email = personalData['email'] ??
+          FirebaseAuth.instance.currentUser?.email ??
+          'sin-correo';
+
+      final facturaData = {
+        'userId': uid,
+        'userName': personalData['name'] ?? '',
+        'email': email,
+        'idNumber': personalData['idNumber'] ?? '',
+        'phone': personalData['phone'] ?? '',
+        'address': personalData['address'] ?? '',
+        'total': totalGeneral,
+        'createdAt': FieldValue.serverTimestamp(),
+        'items': cartDocs.docs.map((e) => e.data()).toList(),
+      };
+
+      final facturaRef =
+          await FirebaseFirestore.instance.collection('facturas').add(facturaData);
+
+      debugPrint("✅ Factura creada con ID: ${facturaRef.id}");
+    } catch (e, st) {
+      debugPrint("❌ Error creando factura: $e\n$st");
+    }
   }
 
+  // 🔹 Generar tickets (reparado)
   Future<void> _generateTickets(String uid) async {
     final userCart = await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .collection('cart')
         .get();
+
     for (final doc in userCart.docs) {
       final data = doc.data();
       final title = data['title'];
-      final date = data['date'];
-      final time = data['time'];
+      final dateStr = data['date'] ?? '';
+      final timeStr = data['time'] ?? '';
       final image = data['image'];
+      final type = data['type'] ?? '';
       final zones = (data['zones'] as List<dynamic>?) ?? [];
+
+      // 🕒 Intentamos construir un DateTime a partir de date y time (en español)
+      DateTime? parsedDate;
+      try {
+        // Ejemplo esperado: "22 de noviembre de 2025" → convertir manualmente
+        final meses = {
+          'enero': 1,
+          'febrero': 2,
+          'marzo': 3,
+          'abril': 4,
+          'mayo': 5,
+          'junio': 6,
+          'julio': 7,
+          'agosto': 8,
+          'septiembre': 9,
+          'octubre': 10,
+          'noviembre': 11,
+          'diciembre': 12,
+        };
+
+        final partes = dateStr.split(' ');
+        if (partes.length >= 4) {
+          final dia = int.tryParse(partes[0]) ?? 1;
+          final mes = meses[partes[2].toLowerCase()] ?? 1;
+          final anio = int.tryParse(partes[3]) ?? DateTime.now().year;
+
+          int hora = 0, minuto = 0;
+          if (timeStr.contains(':')) {
+            final partesHora = timeStr.split(':');
+            hora = int.tryParse(partesHora[0]) ?? 0;
+            minuto = int.tryParse(partesHora[1]) ?? 0;
+          }
+
+          parsedDate = DateTime(anio, mes, dia, hora, minuto);
+        }
+      } catch (e) {
+        debugPrint("⚠️ Error parseando fecha: $e");
+      }
 
       for (final z in zones) {
         final zone = Map<String, dynamic>.from(z);
         final count = (zone['count'] ?? 1) as int;
+
         for (int i = 0; i < count; i++) {
           final qrId = _uuid.v4();
           final qrData = "$uid|$title|${zone['name']}|$qrId";
@@ -388,21 +442,27 @@ class _CartScreenState extends State<CartScreen> {
               .collection('tickets')
               .add({
             'eventTitle': title,
+            'eventType': type,
+            'eventDateTime': parsedDate != null
+                ? Timestamp.fromDate(parsedDate)
+                : FieldValue.serverTimestamp(), // ✅ ahora siempre Timestamp
+            'date': dateStr,
+            'time': timeStr,
+            'image': image,
             'zone': zone['name'],
             'price': zone['price'],
-            'date': date,
-            'time': time,
-            'image': image,
+            'count': count,
             'qrId': qrId,
             'qrData': qrData,
-            'createdAt': FieldValue.serverTimestamp(),
             'used': false,
+            'createdAt': FieldValue.serverTimestamp(),
           });
         }
       }
     }
   }
 
+  // 🔹 Popup animado
   void _showPaymentPopup(BuildContext context, String uid) {
     showDialog(
       context: context,
@@ -422,8 +482,8 @@ class _CartScreenState extends State<CartScreen> {
             });
 
             return AlertDialog(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20)),
+              shape:
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               contentPadding: const EdgeInsets.all(24),
               content: SizedBox(
                 width: 300,
@@ -449,8 +509,7 @@ class _CartScreenState extends State<CartScreen> {
                             const Text(
                               "¡Compra realizada con éxito! 🎉",
                               style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold),
+                                  fontSize: 18, fontWeight: FontWeight.bold),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 24),
@@ -460,8 +519,7 @@ class _CartScreenState extends State<CartScreen> {
                                 Navigator.pushReplacementNamed(
                                     context, '/my_tickets_screen');
                               },
-                              icon:
-                                  const Icon(Icons.confirmation_num),
+                              icon: const Icon(Icons.confirmation_num),
                               label: const Text("Ver mis entradas"),
                             ),
                           ],
