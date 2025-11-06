@@ -11,13 +11,23 @@ import 'screens/home_screen.dart';
 import 'screens/cart_screen.dart';
 import 'screens/my_tickets_screen.dart';
 
+/// 🎨 Controlador del tema (solo si quieres reactivarlo globalmente más adelante)
+class ThemeController extends ChangeNotifier {
+  bool isDarkMode = false;
+
+  void toggleTheme(bool value) {
+    isDarkMode = value;
+    notifyListeners();
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // 👇 BLOQUE NUEVO: Prueba de inicialización del mapa (compatible con 2.7.0)
+  // 👇 Inicialización de Google Maps
   try {
     debugPrint('🗺️ Intentando inicializar Google Maps...');
     final mapsImplementation = GoogleMapsFlutterPlatform.instance;
@@ -29,14 +39,8 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  bool _isDarkMode = false;
 
   @override
   Widget build(BuildContext context) {
@@ -44,18 +48,18 @@ class _MyAppState extends State<MyApp> {
       title: 'Proyecto Estadio',
       debugShowCheckedModeBanner: false,
 
-      // ⚙️ 👇 ESTA ES LA ÚNICA LÍNEA NUEVA
+      // 👇 Renderizado forzado (mantiene tu línea original)
       builder: (context, child) {
-        // Fuerza renderizado por software, ayuda a evitar el loop del mapa
         return Directionality(
           textDirection: TextDirection.ltr,
           child: child ?? const SizedBox(),
         );
       },
 
-      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      theme: _lightTheme,
-      darkTheme: _darkTheme,
+      // 🎨 Tus temas personalizados
+      theme: lightTheme,
+      darkTheme: darkTheme,
+      themeMode: ThemeMode.light, // El modo ahora lo maneja HomeScreen localmente
 
       routes: {
         '/cart_screen': (context) => const CartScreen(),
@@ -71,10 +75,7 @@ class _MyAppState extends State<MyApp> {
             );
           }
           if (snapshot.hasData) {
-            return HomeScreen(
-              isDarkMode: _isDarkMode,
-              onThemeChanged: (val) => setState(() => _isDarkMode = val),
-            );
+            return const HomeScreen(); // 👈 ya no recibe tema global
           }
           return const LoginScreen();
         },
@@ -87,8 +88,9 @@ class _MyAppState extends State<MyApp> {
 /// Tema claro: blanco (#FFFFFF) base con azules intensos (#0511F2, #295BF2, #91B2F2)
 /// Tema oscuro: fondo negro azulado (#0D1826) con azules profundos (#23518C, #203359)
 
+
 // 🌞 TEMA CLARO
-final ThemeData _lightTheme = ThemeData(
+final ThemeData lightTheme = ThemeData(
   brightness: Brightness.light,
   scaffoldBackgroundColor: Colors.white,
   colorScheme: const ColorScheme(
@@ -109,13 +111,16 @@ final ThemeData _lightTheme = ThemeData(
   ),
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
-      backgroundColor: Color(0xFF23518C),
+      backgroundColor: const Color(0xFF23518C),
       foregroundColor: Colors.white,
-      textStyle: TextStyle(fontWeight: FontWeight.bold),
-      minimumSize: Size(double.infinity, 50),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+      textStyle: const TextStyle(fontWeight: FontWeight.bold),
+      minimumSize: const Size(double.infinity, 50),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
     ),
   ),
+  // 👇 corregido: ahora usa CardThemeData
   cardTheme: const CardThemeData(
     color: Color(0xFFF2F2F2),
     elevation: 3,
@@ -125,12 +130,12 @@ final ThemeData _lightTheme = ThemeData(
   ),
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
-    fillColor: Color(0xFFF2F2F2),
+    fillColor: const Color(0xFFF2F2F2),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide.none,
     ),
-    hintStyle: TextStyle(color: Colors.black54),
+    hintStyle: const TextStyle(color: Colors.black54),
   ),
   snackBarTheme: const SnackBarThemeData(
     backgroundColor: Color(0xFF0511F2),
@@ -138,10 +143,11 @@ final ThemeData _lightTheme = ThemeData(
   ),
 );
 
+
 // 🌙 TEMA OSCURO
-final ThemeData _darkTheme = ThemeData(
+final ThemeData darkTheme = ThemeData(
   brightness: Brightness.dark,
-  scaffoldBackgroundColor: Color(0xFF0D1826),
+  scaffoldBackgroundColor: const Color(0xFF0D1826),
   colorScheme: const ColorScheme(
     brightness: Brightness.dark,
     primary: Color(0xFF23518C),
@@ -160,13 +166,16 @@ final ThemeData _darkTheme = ThemeData(
   ),
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
-      backgroundColor: Color(0xFF23518C),
+      backgroundColor: const Color(0xFF23518C),
       foregroundColor: Colors.white,
-      textStyle: TextStyle(fontWeight: FontWeight.bold),
-      minimumSize: Size(double.infinity, 50),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+      textStyle: const TextStyle(fontWeight: FontWeight.bold),
+      minimumSize: const Size(double.infinity, 50),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
     ),
   ),
+  // 👇 corregido: ahora usa CardThemeData
   cardTheme: const CardThemeData(
     color: Color(0xFF182230),
     elevation: 3,
@@ -176,12 +185,12 @@ final ThemeData _darkTheme = ThemeData(
   ),
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
-    fillColor: Color(0xFF203359),
+    fillColor: const Color(0xFF203359),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide.none,
     ),
-    hintStyle: TextStyle(color: Colors.white70),
+    hintStyle: const TextStyle(color: Colors.white70),
   ),
   snackBarTheme: const SnackBarThemeData(
     backgroundColor: Color(0xFF23518C),

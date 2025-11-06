@@ -25,7 +25,7 @@ android {
         applicationId = "com.estadio.app"
 
         // ✅ Usa al menos 21 para compatibilidad con Google Maps
-        minSdk = 21
+        minSdk = flutter.minSdkVersion
         targetSdk = 36
 
         versionCode = flutter.versionCode

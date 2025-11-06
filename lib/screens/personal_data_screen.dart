@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../theme_sync.dart'; // 👈 Importante para el tema global
 
 class PersonalDataScreen extends StatefulWidget {
   const PersonalDataScreen({super.key});
@@ -65,30 +66,40 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
     required String message,
     bool isError = false,
   }) async {
-    final theme = Theme.of(context);
+    final theme = ThemeSync.currentTheme;
 
     await showDialog(
       context: context,
-      barrierDismissible: true, // se puede cerrar tocando fuera
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: isError ? Colors.red : theme.colorScheme.primary,
+      barrierDismissible: true,
+      builder: (context) => Theme(
+        data: theme,
+        child: AlertDialog(
+          backgroundColor: theme.colorScheme.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isError ? Colors.red : theme.colorScheme.primary,
+                ),
               ),
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: const Icon(Icons.close, color: Colors.grey),
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: TextStyle(
+              fontSize: 16,
+              color: theme.colorScheme.onSurface,
             ),
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: const Icon(Icons.close, color: Colors.grey),
-            ),
-          ],
+          ),
         ),
-        content: Text(message, style: const TextStyle(fontSize: 16)),
       ),
     );
   }
@@ -140,71 +151,104 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final theme = ThemeSync.currentTheme;
+    ThemeSync.applyThemeSilently(ThemeSync.isDarkMode);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Datos personales'),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              // 📧 Correo (solo lectura)
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Correo electrónico'),
-                readOnly: true,
-              ),
-              const SizedBox(height: 10),
-
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Nombre completo'),
-                validator: (value) =>
-                    value!.isEmpty ? 'Ingrese su nombre completo' : null,
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _idController,
-                decoration: const InputDecoration(labelText: 'Cédula'),
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(labelText: 'Teléfono'),
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _addressController,
-                decoration: const InputDecoration(labelText: 'Dirección'),
-              ),
-              const SizedBox(height: 20),
-
-              ElevatedButton.icon(
-                icon: const Icon(Icons.save),
-                label: _loading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Guardar'),
-                onPressed: _loading ? null : _saveUserData,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: theme.colorScheme.onPrimary,
+    return Theme(
+      data: theme,
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        appBar: AppBar(
+          title: const Text('Datos personales'),
+          backgroundColor: theme.colorScheme.primary,
+          foregroundColor: theme.colorScheme.onPrimary,
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              children: [
+                // 📧 Correo (solo lectura)
+                TextFormField(
+                  controller: _emailController,
+                  decoration: InputDecoration(
+                    labelText: 'Correo electrónico',
+                    prefixIcon: Icon(Icons.email, color: theme.colorScheme.primary),
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.1),
+                  ),
+                  readOnly: true,
+                  style: TextStyle(color: theme.colorScheme.onSurface),
                 ),
-              ),
+                const SizedBox(height: 10),
 
-              const SizedBox(height: 20),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Nombre completo',
+                    prefixIcon: Icon(Icons.person, color: theme.colorScheme.primary),
+                  ),
+                  validator: (value) =>
+                      value!.isEmpty ? 'Ingrese su nombre completo' : null,
+                ),
+                const SizedBox(height: 10),
 
-              TextButton.icon(
-                icon: const Icon(Icons.lock_reset),
-                label: const Text('Restablecer contraseña'),
-                onPressed: _resetPassword,
-              ),
-            ],
+                TextFormField(
+                  controller: _idController,
+                  decoration: InputDecoration(
+                    labelText: 'Cédula',
+                    prefixIcon: Icon(Icons.badge, color: theme.colorScheme.primary),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                TextFormField(
+                  controller: _phoneController,
+                  decoration: InputDecoration(
+                    labelText: 'Teléfono',
+                    prefixIcon: Icon(Icons.phone, color: theme.colorScheme.primary),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                TextFormField(
+                  controller: _addressController,
+                  decoration: InputDecoration(
+                    labelText: 'Dirección',
+                    prefixIcon: Icon(Icons.home, color: theme.colorScheme.primary),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.save),
+                  label: _loading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Guardar'),
+                  onPressed: _loading ? null : _saveUserData,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary,
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                TextButton.icon(
+                  icon: const Icon(Icons.lock_reset),
+                  label: const Text('Restablecer contraseña'),
+                  onPressed: _resetPassword,
+                  style: TextButton.styleFrom(
+                    foregroundColor: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
