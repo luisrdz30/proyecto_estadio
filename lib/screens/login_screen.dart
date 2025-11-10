@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'register_screen.dart';
-import '../theme_sync.dart'; // 👈 Importante para sincronizar el tema
+import '../theme_sync.dart';
+import 'home_screen.dart';
+import 'admin_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,7 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
-  /// 🔐 Iniciar sesión con correo y contraseña
+  /// 🔐 Iniciar sesión con verificación de tipo de usuario
   Future<void> _loginWithEmail() async {
     setState(() {
       _isLoading = true;
@@ -25,23 +28,80 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
+      // 🔹 Autenticación
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
       final user = userCredential.user;
+      if (user == null) throw FirebaseAuthException(code: 'no-user');
 
-      if (user != null) {
-        if (!user.emailVerified) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text("Verifica tu correo antes de ingresar."),
-              backgroundColor: ThemeSync.currentTheme.colorScheme.secondary,
-            ),
-          );
-          await _auth.signOut();
+      // 🔹 Verificación de correo
+      if (!user.emailVerified) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Verifica tu correo antes de ingresar."),
+            backgroundColor: ThemeSync.currentTheme.colorScheme.secondary,
+          ),
+        );
+        await _auth.signOut();
+        return;
+      }
+
+      // 🔹 Leer tipo de usuario desde Firestore
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('personalData')
+          .doc('info')
+          .get();
+
+      String userType = 'normal';
+      if (userDoc.exists) {
+        final data = userDoc.data();
+        print("📄 Datos Firestore: $data");
+        if (data != null && data.containsKey('userType')) {
+          userType = data['userType'] ?? 'normal';
         }
+      } else {
+        print("⚠️ Documento info no encontrado para este usuario");
+      }
+
+      print("🔍 userType RAW: '$userType'");
+
+      // 🔹 Verificar si tiene claims admin
+      final tokenResult = await user.getIdTokenResult();
+      final isAdminClaim = tokenResult.claims?['admin'] == true;
+
+      // 🔹 Redirección según rol
+      if (userType.trim().toLowerCase() == 'admin' || isAdminClaim) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("🛠 Modo admin detectado, redirigiendo..."),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // ✅ Forzar cambio total de pantalla (no regresa al login)
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const AdminHomeScreen()),
+          (route) => false,
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("👤 Usuario normal detectado"),
+            backgroundColor: Colors.blue,
+          ),
+        );
+
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
+        );
       }
     } on FirebaseAuthException catch (e) {
       setState(() {
@@ -52,10 +112,15 @@ class _LoginScreenState extends State<LoginScreen> {
           _ => 'Error al iniciar sesión. Intenta nuevamente.',
         };
       });
+    } catch (e) {
+      setState(() => _errorMessage = 'Error inesperado: $e');
+      print("❌ Error inesperado: $e");
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -86,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// 🔹 Mostrar diálogo para ingresar el correo
+  /// 🔹 Mostrar diálogo para ingresar correo
   void _showForgotPasswordDialog() {
     final TextEditingController resetController = TextEditingController();
     final theme = ThemeSync.currentTheme;
@@ -133,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = ThemeSync.currentTheme; // 👈 Tema sincronizado
+    final theme = ThemeSync.currentTheme;
     ThemeSync.applyThemeSilently(ThemeSync.isDarkMode);
 
     return Theme(
@@ -145,7 +210,8 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Image.asset("assets/images/logo_estadio_sin_fondo.png", height: 120),
+              Image.asset("assets/images/logo_estadio_sin_fondo.png",
+                  height: 120),
               const SizedBox(height: 40),
 
               Text(
@@ -164,7 +230,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   labelText: "Correo electrónico",
                   prefixIcon: Icon(Icons.email, color: theme.colorScheme.primary),
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.2),
+                  fillColor:
+                      theme.colorScheme.surfaceVariant.withOpacity(0.2),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -180,7 +247,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   labelText: "Contraseña",
                   prefixIcon: Icon(Icons.lock, color: theme.colorScheme.primary),
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.2),
+                  fillColor:
+                      theme.colorScheme.surfaceVariant.withOpacity(0.2),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -225,8 +293,8 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 10),
 
               OutlinedButton.icon(
-                icon:
-                    Icon(Icons.person_add_alt_1, color: theme.colorScheme.primary),
+                icon: Icon(Icons.person_add_alt_1,
+                    color: theme.colorScheme.primary),
                 onPressed: () {
                   Navigator.push(
                     context,

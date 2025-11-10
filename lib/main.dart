@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
@@ -10,11 +11,10 @@ import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/cart_screen.dart';
 import 'screens/my_tickets_screen.dart';
+import 'screens/admin_home_screen.dart';
 
-/// 🎨 Controlador del tema (solo si quieres reactivarlo globalmente más adelante)
 class ThemeController extends ChangeNotifier {
   bool isDarkMode = false;
-
   void toggleTheme(bool value) {
     isDarkMode = value;
     notifyListeners();
@@ -27,7 +27,6 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // 👇 Inicialización de Google Maps
   try {
     debugPrint('🗺️ Intentando inicializar Google Maps...');
     final mapsImplementation = GoogleMapsFlutterPlatform.instance;
@@ -42,30 +41,44 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  Future<String?> _getUserType(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('personalData')
+          .doc('info')
+          .get();
+
+      if (doc.exists && doc.data() != null) {
+        return doc.data()!['userType']?.toString().toLowerCase();
+      }
+    } catch (e) {
+      debugPrint("⚠️ Error al obtener userType: $e");
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Proyecto Estadio',
       debugShowCheckedModeBanner: false,
-
-      // 👇 Renderizado forzado (mantiene tu línea original)
       builder: (context, child) {
         return Directionality(
           textDirection: TextDirection.ltr,
           child: child ?? const SizedBox(),
         );
       },
-
-      // 🎨 Tus temas personalizados
       theme: lightTheme,
       darkTheme: darkTheme,
-      themeMode: ThemeMode.light, // El modo ahora lo maneja HomeScreen localmente
-
+      themeMode: ThemeMode.light,
       routes: {
         '/cart_screen': (context) => const CartScreen(),
         '/my_tickets_screen': (context) => const MyTicketsScreen(),
       },
 
+      // 👇 AQUÍ EL CAMBIO: ahora verificamos tipo de usuario antes de decidir pantalla inicial
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
@@ -74,20 +87,36 @@ class MyApp extends StatelessWidget {
               body: Center(child: CircularProgressIndicator()),
             );
           }
-          if (snapshot.hasData) {
-            return const HomeScreen(); // 👈 ya no recibe tema global
+
+          final user = snapshot.data;
+          if (user == null) {
+            return const LoginScreen();
           }
-          return const LoginScreen();
+
+          return FutureBuilder<String?>(
+            future: _getUserType(user.uid),
+            builder: (context, userTypeSnap) {
+              if (userTypeSnap.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              final userType = userTypeSnap.data ?? 'normal';
+              debugPrint("🧠 Usuario detectado en main: $userType");
+
+              if (userType == 'admin') {
+                return const AdminHomeScreen();
+              } else {
+                return const HomeScreen();
+              }
+            },
+          );
         },
       ),
     );
   }
 }
-
-/// 🎨 Paleta actualizada
-/// Tema claro: blanco (#FFFFFF) base con azules intensos (#0511F2, #295BF2, #91B2F2)
-/// Tema oscuro: fondo negro azulado (#0D1826) con azules profundos (#23518C, #203359)
-
 
 // 🌞 TEMA CLARO
 final ThemeData lightTheme = ThemeData(

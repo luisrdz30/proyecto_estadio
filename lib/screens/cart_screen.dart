@@ -53,8 +53,8 @@ class _CartScreenState extends State<CartScreen> {
                   context: context,
                   builder: (context) => AlertDialog(
                     title: const Text("Vaciar carrito"),
-                    content: const Text(
-                        "¿Deseas eliminar todos los productos del carrito?"),
+                    content:
+                        const Text("¿Deseas eliminar todos los productos del carrito?"),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context, false),
@@ -151,8 +151,7 @@ class _CartScreenState extends State<CartScreen> {
                                           style: theme.textTheme.titleMedium
                                               ?.copyWith(
                                             fontWeight: FontWeight.bold,
-                                            color:
-                                                theme.colorScheme.onSurface,
+                                            color: theme.colorScheme.onSurface,
                                           ),
                                         ),
                                         const SizedBox(height: 4),
@@ -175,8 +174,8 @@ class _CartScreenState extends State<CartScreen> {
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(
                                           SnackBar(
-                                            content: Text(
-                                                "$title eliminado del carrito."),
+                                            content:
+                                                Text("$title eliminado del carrito."),
                                           ),
                                         );
                                       }
@@ -186,25 +185,46 @@ class _CartScreenState extends State<CartScreen> {
                               ),
                               const Divider(),
                               ...zones.map((z) {
-                                final zone =
-                                    Map<String, dynamic>.from(z);
+                                final zone = Map<String, dynamic>.from(z);
                                 return Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      "${zone['name']} (${zone['count']}x)",
-                                      style: TextStyle(
-                                        color:
-                                            theme.colorScheme.onSurface,
-                                      ),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          zone['name'],
+                                          style: TextStyle(
+                                              color: theme.colorScheme.onSurface),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          icon: const Icon(Icons.remove_circle,
+                                              color: Colors.redAccent, size: 22),
+                                          onPressed: () async {
+                                            await _updateZoneCount(
+                                                uid, title, zone['name'], -1);
+                                          },
+                                        ),
+                                        Text("${zone['count']}x",
+                                            style: TextStyle(
+                                                color:
+                                                    theme.colorScheme.onSurface)),
+                                        IconButton(
+                                          icon: const Icon(Icons.add_circle,
+                                              color: Colors.green, size: 22),
+                                          onPressed: () async {
+                                            await _updateZoneCount(
+                                                uid, title, zone['name'], 1);
+                                          },
+                                        ),
+                                      ],
                                     ),
                                     Text(
                                       "\$${(zone['subtotal'] ?? 0).toStringAsFixed(2)}",
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        color:
-                                            theme.colorScheme.onSurface,
+                                        color: theme.colorScheme.onSurface,
                                       ),
                                     ),
                                   ],
@@ -215,8 +235,7 @@ class _CartScreenState extends State<CartScreen> {
                                 alignment: Alignment.centerRight,
                                 child: Text(
                                   "Total evento: \$${total.toStringAsFixed(2)}",
-                                  style: theme.textTheme.bodyMedium
-                                      ?.copyWith(
+                                  style: theme.textTheme.bodyMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
                                     color: theme.colorScheme.onSurface,
                                   ),
@@ -232,22 +251,20 @@ class _CartScreenState extends State<CartScreen> {
 
                 // ✅ Pie de pago
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withOpacity(0.1),
                     border: Border(
                       top: BorderSide(
-                        color: theme.colorScheme.primary
-                            .withOpacity(0.2),
+                        color: theme.colorScheme.primary.withOpacity(0.2),
                       ),
                     ),
                   ),
                   child: Column(
                     children: [
                       Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             "Total general:",
@@ -271,17 +288,20 @@ class _CartScreenState extends State<CartScreen> {
 
                       CheckboxListTile(
                         value: _wantsInvoice,
-                        onChanged: (v) => setState(() => _wantsInvoice = v ?? false),
+                        onChanged: (v) =>
+                            setState(() => _wantsInvoice = v ?? false),
                         title: Text(
                           "¿Desea factura?",
-                          style: TextStyle(color: theme.colorScheme.onSurface),
+                          style:
+                              TextStyle(color: theme.colorScheme.onSurface),
                         ),
                         controlAffinity: ListTileControlAffinity.leading,
                       ),
 
                       ElevatedButton.icon(
                         onPressed: totalGeneral > 0
-                            ? () async => _handlePayment(context, uid, totalGeneral)
+                            ? () async => _handlePayment(
+                                context, uid, totalGeneral)
                             : null,
                         icon: const Icon(Icons.payment),
                         label: const Text("Proceder al pago"),
@@ -300,6 +320,45 @@ class _CartScreenState extends State<CartScreen> {
         ),
       ),
     );
+  }
+
+  /// 🔹 Actualizar cantidad (+ o -)
+  Future<void> _updateZoneCount(
+      String uid, String eventTitle, String zoneName, int delta) async {
+    final cartRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('cart')
+        .doc(eventTitle);
+
+    final doc = await cartRef.get();
+    if (!doc.exists) return;
+
+    final data = doc.data()!;
+    final zones =
+        (data['zones'] as List).map((z) => Map<String, dynamic>.from(z)).toList();
+
+    for (final zone in zones) {
+      if (zone['name'] == zoneName) {
+        zone['count'] = (zone['count'] ?? 0) + delta;
+        if (zone['count'] < 1) {
+          zones.remove(zone);
+          break;
+        }
+        zone['subtotal'] =
+            (zone['price'] ?? 0) * (zone['count'] ?? 0);
+        break;
+      }
+    }
+
+    final total =
+        zones.fold<double>(0, (sum, z) => sum + (z['subtotal'] ?? 0));
+
+    if (zones.isEmpty) {
+      await cartRef.delete();
+    } else {
+      await cartRef.update({'zones': zones, 'total': total});
+    }
   }
 
   // 🔹 Manejo del pago
@@ -341,18 +400,12 @@ class _CartScreenState extends State<CartScreen> {
           await userRef.collection('personalData').doc('info').get();
       final cartDocs = await userRef.collection('cart').get();
 
-      if (!personalDataSnap.exists) {
-        debugPrint("⚠️ No se encontró información personal del usuario.");
-        return;
-      }
-
       final personalData = personalDataSnap.data() ?? {};
-
       final email = personalData['email'] ??
           FirebaseAuth.instance.currentUser?.email ??
           'sin-correo';
 
-      final facturaData = {
+      await FirebaseFirestore.instance.collection('facturas').add({
         'userId': uid,
         'userName': personalData['name'] ?? '',
         'email': email,
@@ -362,18 +415,13 @@ class _CartScreenState extends State<CartScreen> {
         'total': totalGeneral,
         'createdAt': FieldValue.serverTimestamp(),
         'items': cartDocs.docs.map((e) => e.data()).toList(),
-      };
-
-      final facturaRef =
-          await FirebaseFirestore.instance.collection('facturas').add(facturaData);
-
-      debugPrint("✅ Factura creada con ID: ${facturaRef.id}");
-    } catch (e, st) {
-      debugPrint("❌ Error creando factura: $e\n$st");
+      });
+    } catch (e) {
+      debugPrint("❌ Error creando factura: $e");
     }
   }
 
-  // 🔹 Generar tickets (reparado)
+  // 🔹 Generar tickets (timestamp real)
   Future<void> _generateTickets(String uid) async {
     final userCart = await FirebaseFirestore.instance
         .collection('users')
@@ -390,10 +438,8 @@ class _CartScreenState extends State<CartScreen> {
       final type = data['type'] ?? '';
       final zones = (data['zones'] as List<dynamic>?) ?? [];
 
-      // 🕒 Intentamos construir un DateTime a partir de date y time (en español)
       DateTime? parsedDate;
       try {
-        // Ejemplo esperado: "22 de noviembre de 2025" → convertir manualmente
         final meses = {
           'enero': 1,
           'febrero': 2,
@@ -445,7 +491,7 @@ class _CartScreenState extends State<CartScreen> {
             'eventType': type,
             'eventDateTime': parsedDate != null
                 ? Timestamp.fromDate(parsedDate)
-                : FieldValue.serverTimestamp(), // ✅ ahora siempre Timestamp
+                : FieldValue.serverTimestamp(),
             'date': dateStr,
             'time': timeStr,
             'image': image,
@@ -482,8 +528,8 @@ class _CartScreenState extends State<CartScreen> {
             });
 
             return AlertDialog(
-              shape:
-                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
               contentPadding: const EdgeInsets.all(24),
               content: SizedBox(
                 width: 300,
