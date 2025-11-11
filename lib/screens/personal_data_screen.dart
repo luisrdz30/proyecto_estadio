@@ -15,6 +15,7 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
   final user = FirebaseAuth.instance.currentUser!;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -38,7 +39,7 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
         .doc('info');
     final snapshot = await docRef.get();
 
-    _emailController.text = user.email ?? ''; // carga el email actual
+    _emailController.text = user.email ?? '';
 
     if (snapshot.exists) {
       final data = snapshot.data()!;
@@ -58,9 +59,14 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
         'createdAt': Timestamp.now(),
       });
     }
+
+    // 🆕 Leer username desde la raíz
+    final userDoc = await _db.collection('users').doc(user.uid).get();
+    if (userDoc.exists && userDoc.data()?['username'] != null) {
+      _usernameController.text = userDoc['username'];
+    }
   }
 
-  /// ✅ Pop-up elegante reutilizable
   Future<void> _showPopup({
     required String title,
     required String message,
@@ -124,6 +130,11 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
       'updatedAt': Timestamp.now(),
     });
 
+    // 🆕 También actualizar el username en la raíz
+    await _db.collection('users').doc(user.uid).update({
+      'username': _usernameController.text.trim(),
+    });
+
     setState(() => _loading = false);
 
     await _showPopup(
@@ -169,6 +180,21 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
             key: _formKey,
             child: ListView(
               children: [
+                // 🆕 Campo obligatorio para nombre de usuario
+                TextFormField(
+                  controller: _usernameController,
+                  decoration: InputDecoration(
+                    labelText: 'Nombre de usuario',
+                    prefixIcon:
+                        Icon(Icons.account_circle, color: theme.colorScheme.primary),
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.1),
+                  ),
+                  validator: (value) =>
+                      value!.trim().isEmpty ? 'Ingrese un nombre de usuario' : null,
+                ),
+                const SizedBox(height: 10),
+
                 // 📧 Correo (solo lectura)
                 TextFormField(
                   controller: _emailController,
@@ -179,6 +205,9 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                     fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.1),
                   ),
                   readOnly: true,
+                  validator: (value) => value!.trim().isEmpty
+                      ? 'El correo electrónico no puede estar vacío'
+                      : null,
                   style: TextStyle(color: theme.colorScheme.onSurface),
                 ),
                 const SizedBox(height: 10),
@@ -190,7 +219,7 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                     prefixIcon: Icon(Icons.person, color: theme.colorScheme.primary),
                   ),
                   validator: (value) =>
-                      value!.isEmpty ? 'Ingrese su nombre completo' : null,
+                      value!.trim().isEmpty ? 'Ingrese su nombre completo' : null,
                 ),
                 const SizedBox(height: 10),
 
@@ -200,6 +229,8 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                     labelText: 'Cédula',
                     prefixIcon: Icon(Icons.badge, color: theme.colorScheme.primary),
                   ),
+                  validator: (value) =>
+                      value!.trim().isEmpty ? 'Ingrese su número de cédula' : null,
                 ),
                 const SizedBox(height: 10),
 
@@ -209,6 +240,8 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                     labelText: 'Teléfono',
                     prefixIcon: Icon(Icons.phone, color: theme.colorScheme.primary),
                   ),
+                  validator: (value) =>
+                      value!.trim().isEmpty ? 'Ingrese su número de teléfono' : null,
                 ),
                 const SizedBox(height: 10),
 
@@ -218,6 +251,8 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                     labelText: 'Dirección',
                     prefixIcon: Icon(Icons.home, color: theme.colorScheme.primary),
                   ),
+                  validator: (value) =>
+                      value!.trim().isEmpty ? 'Ingrese su dirección' : null,
                 ),
                 const SizedBox(height: 20),
 
@@ -236,7 +271,6 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
 
                 TextButton.icon(

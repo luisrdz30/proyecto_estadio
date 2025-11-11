@@ -3,6 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme_sync.dart';
 import 'login_screen.dart';
+import 'admin_users_screen.dart';
+import 'admin_events_screen.dart'; // 👈 asegúrate de que el archivo tenga este nombre exacto
+import 'admin_facturas_screen.dart';
+import '../widgets/admin_navbar.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -14,6 +18,7 @@ class AdminHomeScreen extends StatefulWidget {
 class _AdminHomeScreenState extends State<AdminHomeScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  int _selectedIndex = 0;
   int totalUsers = 0;
   int totalEvents = 0;
   int totalFacturas = 0;
@@ -62,87 +67,63 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     );
   }
 
-  /// 📊 Cargar métricas principales del panel
+  /// 📊 Cargar métricas del panel
   Future<void> _loadDashboardData() async {
     try {
-      // 1️⃣ Contar usuarios registrados
-      // 🔹 Contar documentos dentro de /users (aunque estén vacíos)
       int usersCount = 0;
-      try {
-        final usersSnap = await FirebaseFirestore.instance.collection('users').get();
-        usersCount = usersSnap.size;
-        debugPrint("👥 Total de documentos en /users: $usersCount");
-      } catch (e) {
-        debugPrint("⚠️ Error contando usuarios: $e");
-      }
-
-
-      // 2️⃣ Contar eventos activos
       int activeEvents = 0;
-      try {
-        final eventsSnap = await FirebaseFirestore.instance
-            .collection('events')
-            .where('isActive', isEqualTo: true)
-            .get();
-        activeEvents = eventsSnap.size;
-      } catch (e) {
-        debugPrint("⚠️ No se pudo contar eventos: $e");
-      }
-
-      // 3️⃣ Contar total de facturas (todas)
       int facturasCount = 0;
-      try {
-        final facturasSnap =
-            await FirebaseFirestore.instance.collection('facturas').get();
-        facturasCount = facturasSnap.size;
-      } catch (e) {
-        debugPrint("⚠️ No se pudo contar facturas: $e");
-      }
-
-      // 4️⃣ Calcular ventas del día
       double salesToday = 0;
-      try {
-        final now = DateTime.now();
-        final today = DateTime(now.year, now.month, now.day);
+      final recent = <Map<String, dynamic>>[];
 
-        final facturasSnap =
-            await FirebaseFirestore.instance.collection('facturas').get();
+      // 🔹 Contar usuarios
+      final usersSnap =
+          await FirebaseFirestore.instance.collection('users').get();
+      usersCount = usersSnap.size;
 
-        for (final doc in facturasSnap.docs) {
-          final data = doc.data();
-          final createdAtRaw = data['createdAt'];
+      // 🔹 Contar eventos activos
+      final eventsSnap = await FirebaseFirestore.instance
+          .collection('events')
+          .where('isActive', isEqualTo: true)
+          .get();
+      activeEvents = eventsSnap.size;
 
-          // Intentar convertir createdAt en DateTime
-          DateTime? created;
-          if (createdAtRaw is Timestamp) {
-            created = createdAtRaw.toDate();
-          } else if (createdAtRaw is String) {
-            created = DateTime.tryParse(createdAtRaw);
-          }
+      // 🔹 Contar facturas
+      final facturasSnap =
+          await FirebaseFirestore.instance.collection('facturas').get();
+      facturasCount = facturasSnap.size;
 
-          if (created != null &&
-              created.year == today.year &&
-              created.month == today.month &&
-              created.day == today.day) {
-            // Sumar totales de los items
-            if (data['items'] is List) {
-              for (final item in (data['items'] as List)) {
-                final t = (item is Map && item['total'] != null)
-                    ? (item['total'] as num).toDouble()
-                    : 0.0;
-                salesToday += t;
-              }
-            } else if (data['total'] != null) {
-              salesToday += (data['total'] as num).toDouble();
+      // 🔹 Calcular ventas del día
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      for (final doc in facturasSnap.docs) {
+        final data = doc.data();
+        final createdAtRaw = data['createdAt'];
+        DateTime? created;
+        if (createdAtRaw is Timestamp) {
+          created = createdAtRaw.toDate();
+        } else if (createdAtRaw is String) {
+          created = DateTime.tryParse(createdAtRaw);
+        }
+
+        if (created != null &&
+            created.year == today.year &&
+            created.month == today.month &&
+            created.day == today.day) {
+          if (data['items'] is List) {
+            for (final item in (data['items'] as List)) {
+              final t = (item is Map && item['total'] != null)
+                  ? (item['total'] as num).toDouble()
+                  : 0.0;
+              salesToday += t;
             }
+          } else if (data['total'] != null) {
+            salesToday += (data['total'] as num).toDouble();
           }
         }
-      } catch (e) {
-        debugPrint("⚠️ Error en cálculo de ventas del día: $e");
       }
 
-      // 5️⃣ Últimos movimientos (top 5 facturas)
-      final recent = <Map<String, dynamic>>[];
+      // 🔹 Últimas 5 facturas
       final recentSnap = await FirebaseFirestore.instance
           .collection('facturas')
           .orderBy('createdAt', descending: true)
@@ -153,8 +134,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         final data = d.data();
         final createdAtTs = data['createdAt'];
         DateTime? created;
-        if (createdAtTs is Timestamp) created = createdAtTs.toDate();
-        else if (createdAtTs is String) created = DateTime.tryParse(createdAtTs);
+        if (createdAtTs is Timestamp) {
+          created = createdAtTs.toDate();
+        } else if (createdAtTs is String) {
+          created = DateTime.tryParse(createdAtTs);
+        }
 
         double facturaTotal = 0;
         if (data['items'] is List) {
@@ -189,20 +173,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       });
     } catch (e) {
       debugPrint("❌ Error cargando métricas: $e");
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error cargando métricas: $e'),
-          backgroundColor: ThemeSync.currentTheme.colorScheme.error,
-        ),
-      );
     }
   }
 
-  /// 🚪 Cerrar sesión
   Future<void> _logout() async {
     await _auth.signOut();
-    await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
@@ -216,17 +191,25 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     final theme = ThemeSync.currentTheme;
     ThemeSync.applyThemeSilently(ThemeSync.isDarkMode);
 
+    final screens = [
+      _buildDashboard(theme),
+      const AdminUsersScreen(),
+      AdminEventosScreen(), // 👈 Nombre corregido
+      AdminFacturasScreen(),
+    ];
+
     return Theme(
       data: theme,
       child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
           backgroundColor: theme.colorScheme.primary,
           title: const Text("Panel de Administración"),
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
+              tooltip: "Actualizar",
               onPressed: _loadDashboardData,
-              tooltip: 'Actualizar',
             ),
             IconButton(
               icon: const Icon(Icons.logout),
@@ -235,102 +218,111 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             ),
           ],
         ),
-        body: RefreshIndicator(
-          onRefresh: _loadDashboardData,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            child: Column(
+        body: screens[_selectedIndex],
+        bottomNavigationBar: AdminNavbar(
+          currentIndex: _selectedIndex,
+          onTap: (index) => setState(() => _selectedIndex = index),
+        ),
+      ),
+    );
+  }
+
+  /// 🧩 Dashboard principal
+  Widget _buildDashboard(ThemeData theme) {
+    return RefreshIndicator(
+      onRefresh: _loadDashboardData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Text(
+              "Resumen general",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
               children: [
-                const SizedBox(height: 10),
-                Text(
-                  "Resumen general",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
+                _buildDashboardCard(
+                  theme,
+                  icon: Icons.people,
+                  title: "Usuarios registrados",
+                  value: "$totalUsers",
+                  color: Colors.teal,
                 ),
-                const SizedBox(height: 20),
-
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  children: [
-                    _buildDashboardCard(
-                      theme,
-                      icon: Icons.people,
-                      title: "Usuarios registrados",
-                      value: "$totalUsers",
-                      color: Colors.teal,
-                    ),
-                    _buildDashboardCard(
-                      theme,
-                      icon: Icons.event_available,
-                      title: "Eventos activos",
-                      value: "$totalEvents",
-                      color: Colors.indigo,
-                    ),
-                    _buildDashboardCard(
-                      theme,
-                      icon: Icons.attach_money,
-                      title: "Ventas del día",
-                      value: "\$${totalSalesToday.toStringAsFixed(2)}",
-                      color: Colors.orange,
-                    ),
-                    _buildDashboardCard(
-                      theme,
-                      icon: Icons.receipt_long,
-                      title: "Facturas registradas",
-                      value: "$totalFacturas",
-                      color: Colors.purple,
-                    ),
-                  ],
+                _buildDashboardCard(
+                  theme,
+                  icon: Icons.event_available,
+                  title: "Eventos activos",
+                  value: "$totalEvents",
+                  color: Colors.indigo,
                 ),
-
-                const SizedBox(height: 30),
-                Text(
-                  "Últimos movimientos",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.primary,
-                  ),
+                _buildDashboardCard(
+                  theme,
+                  icon: Icons.attach_money,
+                  title: "Ventas del día",
+                  value: "\$${totalSalesToday.toStringAsFixed(2)}",
+                  color: Colors.orange,
                 ),
-                const SizedBox(height: 10),
-
-                ...recentMoves.map((m) {
-                  final dateStr = m['createdAt'] is DateTime
-                      ? (m['createdAt'] as DateTime)
-                          .toLocal()
-                          .toString()
-                          .split('.')[0]
-                      : '—';
-                  return Card(
-                    color: theme.colorScheme.surfaceVariant.withOpacity(0.2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ListTile(
-                      leading: const Icon(Icons.shopping_cart),
-                      title: Text(m['title']?.toString() ?? 'Compra'),
-                      subtitle: Text(dateStr),
-                      trailing: Text(
-                        "\$${(m['total'] as double).toStringAsFixed(2)}",
-                        style: TextStyle(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+                _buildDashboardCard(
+                  theme,
+                  icon: Icons.receipt_long,
+                  title: "Facturas registradas",
+                  value: "$totalFacturas",
+                  color: Colors.purple,
+                ),
               ],
             ),
-          ),
+
+            const SizedBox(height: 30),
+            Text(
+              "Últimos movimientos",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            ...recentMoves.map((m) {
+              final dateStr = m['createdAt'] is DateTime
+                  ? (m['createdAt'] as DateTime)
+                      .toLocal()
+                      .toString()
+                      .split('.')[0]
+                  : '—';
+              return Card(
+                color: theme.colorScheme.surfaceVariant.withOpacity(0.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.shopping_cart),
+                  title: Text(m['title']?.toString() ?? 'Compra'),
+                  subtitle: Text(dateStr),
+                  trailing: Text(
+                    "\$${(m['total'] as double).toStringAsFixed(2)}",
+                    style: TextStyle(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ],
         ),
       ),
     );

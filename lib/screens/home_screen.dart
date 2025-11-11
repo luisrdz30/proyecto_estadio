@@ -11,6 +11,7 @@ import 'favorites_screen.dart';
 import 'location_screen.dart';
 import '../services/cart_service.dart';
 import 'personal_data_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // 🎨 Importamos los temas definidos en main.dart y el gestor global
 import '../main.dart' show lightTheme, darkTheme;
@@ -40,6 +41,20 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadEventTypes();
   }
+
+  Future<String> _getUsername() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return "Usuario";
+
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists && doc.data()?['username'] != null) {
+        return doc['username'];
+      }
+    } catch (_) {}
+    return "Usuario";
+  }
+
 
   Future<void> _loadEventTypes() async {
     final allEvents = await _firestoreService.getEvents().first;
@@ -73,33 +88,41 @@ class _HomeScreenState extends State<HomeScreen> {
             drawer: Drawer(
               child: Column(
                 children: [
-                  UserAccountsDrawerHeader(
-                    decoration: BoxDecoration(color: theme.colorScheme.primary),
-                    currentAccountPicture: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const PersonalDataScreen()),
-                        );
-                      },
-                      child: CircleAvatar(
-                        backgroundColor: theme.colorScheme.onPrimary,
-                        child: Icon(
-                          Icons.person,
-                          size: 40,
-                          color: theme.colorScheme.primary,
+                    StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user?.uid)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      final data = snapshot.data?.data() as Map<String, dynamic>?;
+
+                      final username = data?['username'] ?? "Usuario";
+                      final email = user?.email ?? user?.phoneNumber ?? "Sin correo asociado";
+
+                      return UserAccountsDrawerHeader(
+                        decoration: BoxDecoration(color: theme.colorScheme.primary),
+                        currentAccountPicture: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const PersonalDataScreen()),
+                            );
+                          },
+                          child: CircleAvatar(
+                            backgroundColor: theme.colorScheme.onPrimary,
+                            child: Icon(Icons.person, size: 40, color: theme.colorScheme.primary),
+                          ),
                         ),
-                      ),
-                    ),
-                    accountName: Text(
-                      user?.displayName ?? "Usuario",
-                      style: TextStyle(color: theme.colorScheme.onPrimary),
-                    ),
-                    accountEmail: Text(
-                      user?.email ?? user?.phoneNumber ?? "Sin correo asociado",
-                      style: TextStyle(color: theme.colorScheme.onPrimary),
-                    ),
+                        accountName: Text(
+                          username,
+                          style: TextStyle(color: theme.colorScheme.onPrimary),
+                        ),
+                        accountEmail: Text(
+                          email,
+                          style: TextStyle(color: theme.colorScheme.onPrimary),
+                        ),
+                      );
+                    },
                   ),
                   ListTile(
                     leading: const Icon(Icons.event),

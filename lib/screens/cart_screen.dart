@@ -364,6 +364,7 @@ class _CartScreenState extends State<CartScreen> {
   // 🔹 Manejo del pago
   Future<void> _handlePayment(
       BuildContext context, String uid, double totalGeneral) async {
+    // ✅ Si desea factura, validar datos personales
     if (_wantsInvoice) {
       final doc = await FirebaseFirestore.instance
           .collection('users')
@@ -375,8 +376,8 @@ class _CartScreenState extends State<CartScreen> {
       if (!doc.exists || (doc.data()?['name'] ?? '').isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-                "Debes llenar tus datos personales para generar factura."),
+            content:
+                Text("Debes llenar tus datos personales para generar factura."),
           ),
         );
         Navigator.push(
@@ -387,13 +388,15 @@ class _CartScreenState extends State<CartScreen> {
       }
     }
 
+    // ✅ Generar tickets y factura (aunque no haya solicitado)
     await _generateTickets(uid);
-    if (_wantsInvoice) await _createInvoice(uid, totalGeneral);
+    await _createInvoice(uid, totalGeneral, wantsInvoice: _wantsInvoice);
     _showPaymentPopup(context, uid);
   }
 
   // 🔹 Crear factura
-  Future<void> _createInvoice(String uid, double totalGeneral) async {
+  Future<void> _createInvoice(String uid, double totalGeneral,
+      {bool wantsInvoice = false}) async {
     try {
       final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
       final personalDataSnap =
@@ -405,16 +408,30 @@ class _CartScreenState extends State<CartScreen> {
           FirebaseAuth.instance.currentUser?.email ??
           'sin-correo';
 
+      // ✅ Si no quiere factura, usar datos de consumidor final
+      final bool isConsumerFinal = !wantsInvoice;
+
+      final String userName =
+          isConsumerFinal ? 'Consumidor Final' : (personalData['name'] ?? '');
+      final String idNumber =
+          isConsumerFinal ? '9999999999' : (personalData['idNumber'] ?? '');
+      final String phone =
+          isConsumerFinal ? '0000000000' : (personalData['phone'] ?? '');
+      final String address =
+          isConsumerFinal ? 'S/N' : (personalData['address'] ?? '');
+
       await FirebaseFirestore.instance.collection('facturas').add({
         'userId': uid,
-        'userName': personalData['name'] ?? '',
+        'userName': userName,
         'email': email,
-        'idNumber': personalData['idNumber'] ?? '',
-        'phone': personalData['phone'] ?? '',
-        'address': personalData['address'] ?? '',
+        'idNumber': idNumber,
+        'phone': phone,
+        'address': address,
         'total': totalGeneral,
         'createdAt': FieldValue.serverTimestamp(),
         'items': cartDocs.docs.map((e) => e.data()).toList(),
+        'tipoFactura':
+            isConsumerFinal ? 'consumidor_final' : 'personalizada', // 👈 identificador
       });
     } catch (e) {
       debugPrint("❌ Error creando factura: $e");
