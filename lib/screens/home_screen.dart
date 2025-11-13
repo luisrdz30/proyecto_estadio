@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:proyecto_estadio/screens/cart_screen.dart';
+import 'package:proyecto_estadio/screens/login_screen.dart';
 import '../models/event.dart';
 import '../services/firestore_service.dart';
 import 'event_card.dart';
@@ -178,10 +179,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     leading: const Icon(Icons.logout),
                     title: const Text("Cerrar sesión"),
                     onTap: () async {
-                      Navigator.pop(context);
+                      Navigator.pop(context);             // Cierra el Drawer
                       await FirebaseAuth.instance.signOut();
+
+                      if (!mounted) return;
+
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        (_) => false,
+                      );
                     },
                   ),
+
                   const Spacer(),
 
                   // 🌗 Switch global del tema (sin cerrar el Drawer)
@@ -352,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding:
                           const EdgeInsets.symmetric(horizontal: 12),
                       child: DropdownButtonFormField<String>(
-                        value: _selectedType,
+                        initialValue: _selectedType,
                         decoration: InputDecoration(
                           labelText: "Filtrar por tipo",
                           border: OutlineInputBorder(

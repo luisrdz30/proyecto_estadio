@@ -50,10 +50,14 @@ class _AdminFacturasScreenState extends State<AdminFacturasScreen> {
         // 🔸 Filtro de fechas
         if (_fechaInicio != null &&
             createdAt != null &&
-            createdAt.isBefore(_fechaInicio!)) continue;
+            createdAt.isBefore(_fechaInicio!)) {
+          continue;
+        }
         if (_fechaFin != null &&
             createdAt != null &&
-            createdAt.isAfter(_fechaFin!)) continue;
+            createdAt.isAfter(_fechaFin!)) {
+          continue;
+        }
 
         loaded.add({
           'id': doc.id,
@@ -204,7 +208,7 @@ class _AdminFacturasScreenState extends State<AdminFacturasScreen> {
                 labelText: "Buscar por cédula",
                 prefixIcon: const Icon(Icons.badge_outlined),
                 filled: true,
-                fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.1),
+                fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

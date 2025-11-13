@@ -198,7 +198,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         if (progress == null) return child;
                         return Container(
                           height: 220,
-                          color: theme.colorScheme.surfaceVariant
+                          color: theme.colorScheme.surfaceContainerHighest
                               .withOpacity(0.2),
                           child: const Center(
                               child: CircularProgressIndicator()),

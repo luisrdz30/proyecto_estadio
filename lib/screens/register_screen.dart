@@ -63,10 +63,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         });
 
         // Enviar correo de verificación
-        User? user = FirebaseAuth.instance.currentUser;
-          if (user != null && !user.emailVerified) {
+        if (user != null && !user.emailVerified) {
             await user.sendEmailVerification();
-          }
+         }
 
         final theme = ThemeSync.currentTheme;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -125,7 +124,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   labelText: "Nombre de usuario",
                   prefixIcon: Icon(Icons.person, color: theme.colorScheme.primary),
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.1),
+                  fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -140,7 +139,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   labelText: "Correo electrónico",
                   prefixIcon: Icon(Icons.email, color: theme.colorScheme.primary),
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.1),
+                  fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -166,7 +165,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                   ),
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.1),
+                  fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -191,7 +190,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                   ),
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.1),
+                  fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

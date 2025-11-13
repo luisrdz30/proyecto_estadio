@@ -120,7 +120,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             errorBuilder: (_, __, ___) => Container(
                               height: 180,
                               color:
-                                  theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                                  theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
                               alignment: Alignment.center,
                               child: Icon(Icons.broken_image,
                                   size: 48,

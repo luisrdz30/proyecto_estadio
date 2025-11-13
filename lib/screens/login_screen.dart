@@ -231,7 +231,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: Icon(Icons.email, color: theme.colorScheme.primary),
                   filled: true,
                   fillColor:
-                      theme.colorScheme.surfaceVariant.withOpacity(0.2),
+                      theme.colorScheme.surfaceContainerHighest.withOpacity(0.2),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -248,7 +248,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: Icon(Icons.lock, color: theme.colorScheme.primary),
                   filled: true,
                   fillColor:
-                      theme.colorScheme.surfaceVariant.withOpacity(0.2),
+                      theme.colorScheme.surfaceContainerHighest.withOpacity(0.2),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

@@ -188,7 +188,7 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                     prefixIcon:
                         Icon(Icons.account_circle, color: theme.colorScheme.primary),
                     filled: true,
-                    fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.1),
+                    fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
                   ),
                   validator: (value) =>
                       value!.trim().isEmpty ? 'Ingrese un nombre de usuario' : null,
@@ -202,7 +202,7 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                     labelText: 'Correo electrónico',
                     prefixIcon: Icon(Icons.email, color: theme.colorScheme.primary),
                     filled: true,
-                    fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.1),
+                    fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
                   ),
                   readOnly: true,
                   validator: (value) => value!.trim().isEmpty

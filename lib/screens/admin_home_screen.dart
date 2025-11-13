@@ -304,7 +304,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                       .split('.')[0]
                   : '—';
               return Card(
-                color: theme.colorScheme.surfaceVariant.withOpacity(0.2),
+                color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.2),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -321,7 +321,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   ),
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
@@ -337,7 +337,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withOpacity(0.5), width: 1.5),
       ),

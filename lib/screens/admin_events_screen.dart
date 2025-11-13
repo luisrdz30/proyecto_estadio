@@ -115,7 +115,7 @@ class _AdminEventosScreenState extends State<AdminEventosScreen> {
                     subtitle: Text("$type • $date"),
                     trailing: Switch(
                       value: isActive,
-                      activeColor: theme.colorScheme.primary,
+                      activeThumbColor: theme.colorScheme.primary,
                       onChanged: (_) => _toggleActivo(id, isActive),
                     ),
                     onTap: () {

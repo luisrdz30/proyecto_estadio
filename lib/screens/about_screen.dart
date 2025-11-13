@@ -64,7 +64,7 @@ class AboutScreen extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
-                  color: theme.colorScheme.surfaceVariant, // 👈 más coherente
+                  color: theme.colorScheme.surfaceContainerHighest, // 👈 más coherente
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
                     child: Column(
