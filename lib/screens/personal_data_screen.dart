@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../theme_sync.dart'; // 👈 Importante para el tema global
+import '../theme_sync.dart';
 
 class PersonalDataScreen extends StatefulWidget {
   const PersonalDataScreen({super.key});
@@ -23,7 +23,10 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
   final TextEditingController _emailController = TextEditingController();
 
   bool _loading = false;
-  String _userType = 'normal'; // campo oculto
+  String _userType = 'normal';
+
+  // 🆕 Nueva variable para manejar la foto de perfil
+  String _selectedProfile = 'perfil1.png';
 
   @override
   void initState() {
@@ -48,6 +51,9 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
       _phoneController.text = data['phone'] ?? '';
       _addressController.text = data['address'] ?? '';
       _userType = data['userType'] ?? 'normal';
+
+      // 🆕 Leer imagen de perfil si existe
+      _selectedProfile = data['profileImage'] ?? 'perfil1.png';
     } else {
       await docRef.set({
         'name': '',
@@ -56,15 +62,18 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
         'address': '',
         'email': user.email ?? '',
         'userType': 'normal',
+        'profileImage': _selectedProfile,
         'createdAt': Timestamp.now(),
       });
     }
 
-    // 🆕 Leer username desde la raíz
+    // Username desde raíz
     final userDoc = await _db.collection('users').doc(user.uid).get();
     if (userDoc.exists && userDoc.data()?['username'] != null) {
       _usernameController.text = userDoc['username'];
     }
+
+    setState(() {});
   }
 
   Future<void> _showPopup({
@@ -127,10 +136,10 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
       'address': _addressController.text.trim(),
       'email': _emailController.text.trim(),
       'userType': _userType,
+      'profileImage': _selectedProfile, // 🆕 Guardar foto
       'updatedAt': Timestamp.now(),
     });
 
-    // 🆕 También actualizar el username en la raíz
     await _db.collection('users').doc(user.uid).update({
       'username': _usernameController.text.trim(),
     });
@@ -180,7 +189,64 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
             key: _formKey,
             child: ListView(
               children: [
-                // 🆕 Campo obligatorio para nombre de usuario
+                // 🆕 Selector de foto (encima del username)
+                Center(
+                  child: Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 45,
+                        backgroundImage:
+                            AssetImage("assets/images/$_selectedProfile"),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        "Selecciona tu foto de perfil",
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 115,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: 6,
+                          itemBuilder: (context, index) {
+                            final img = "perfil${index + 1}.png";
+                            final selected = _selectedProfile == img;
+
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() => _selectedProfile = img);
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 8),
+                                padding: selected ? EdgeInsets.all(3) : EdgeInsets.zero,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: selected
+                                      ? Border.all(
+                                          color: theme.colorScheme.primary,
+                                          width: 3)
+                                      : null,
+                                ),
+                                child: CircleAvatar(
+                                  radius: 40,
+                                  backgroundImage:
+                                      AssetImage("assets/images/$img"),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
                 TextFormField(
                   controller: _usernameController,
                   decoration: InputDecoration(
@@ -188,21 +254,22 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                     prefixIcon:
                         Icon(Icons.account_circle, color: theme.colorScheme.primary),
                     filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
+                    fillColor:
+                        theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
                   ),
                   validator: (value) =>
                       value!.trim().isEmpty ? 'Ingrese un nombre de usuario' : null,
                 ),
                 const SizedBox(height: 10),
 
-                // 📧 Correo (solo lectura)
                 TextFormField(
                   controller: _emailController,
                   decoration: InputDecoration(
                     labelText: 'Correo electrónico',
                     prefixIcon: Icon(Icons.email, color: theme.colorScheme.primary),
                     filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
+                    fillColor:
+                        theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
                   ),
                   readOnly: true,
                   validator: (value) => value!.trim().isEmpty
