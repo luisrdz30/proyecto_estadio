@@ -17,7 +17,6 @@ class _EventCardState extends State<EventCard> {
   final FavoritesService _favService = FavoritesService();
 
   bool _isFavorite = false;
-  double _scale = 1.0;
 
   @override
   void initState() {
@@ -58,66 +57,56 @@ class _EventCardState extends State<EventCard> {
 
     return Theme(
       data: theme,
-      child: AnimatedScale(
-        scale: _scale,
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOut,
-        child: Card(
-          color: theme.colorScheme.surface,
-          elevation: 6,
-          margin: const EdgeInsets.symmetric(vertical: 10),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: InkWell(
-            // 🔥 Hace que TODA la tarjeta sea clickeable
-            borderRadius: BorderRadius.circular(15),
-            onTap: _goToDetail,
-            onHighlightChanged: (isPressed) {
-              // Animación de “hundirse” al tocar
-              setState(() {
-                _scale = isPressed ? 0.97 : 1.0;
-              });
-            },
-            child: Stack(
-              children: [
-                Column(
+      child: Card(
+        color: theme.colorScheme.surface,
+        elevation: 6,
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+
+        child: InkWell(
+          borderRadius: BorderRadius.circular(15),
+          onTap: _goToDetail,
+
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 🖼 IMAGEN DEL EVENTO
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                child: Image.network(
+                  widget.event.image,
+                  fit: BoxFit.cover,
+                  height: 180,
+                  width: double.infinity,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 180,
+                      color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.broken_image,
+                        size: 50,
+                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              // 📋 CONTENIDO DEL EVENTO
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 🖼 Imagen del evento
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(15),
-                      ),
-                      child: Image.network(
-                        widget.event.image,
-                        fit: BoxFit.cover,
-                        height: 180,
-                        width: double.infinity,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            height: 180,
-                            color: theme.colorScheme.surfaceVariant
-                                .withOpacity(0.4),
-                            alignment: Alignment.center,
-                            child: Icon(
-                              Icons.broken_image,
-                              size: 50,
-                              color: theme.colorScheme.onSurface
-                                  .withOpacity(0.7),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-
-                    // 📋 Información del evento
-                    Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
+                    // 🔥 TITULO + CORAZÓN AQUÍ
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
                             widget.event.title,
                             style: TextStyle(
                               fontSize: 18,
@@ -125,58 +114,55 @@ class _EventCardState extends State<EventCard> {
                               color: theme.colorScheme.onSurface,
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            "${widget.event.date} • ${widget.event.type}",
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: theme.colorScheme.onSurface
-                                  .withOpacity(0.7),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
+                        ),
 
-                          // 🔘 Botón “Ver más” (también abre el detalle)
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: theme.colorScheme.primary,
-                              foregroundColor: theme.colorScheme.onPrimary,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                        GestureDetector(
+                          onTap: _toggleFavorite,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            transitionBuilder: (child, anim) =>
+                                ScaleTransition(scale: anim, child: child),
+                            child: Icon(
+                              _isFavorite ? Icons.favorite : Icons.favorite_border,
+                              key: ValueKey(_isFavorite),
+                              color: _isFavorite
+                                  ? Colors.redAccent
+                                  : theme.colorScheme.primary,
+                              size: 28,
                             ),
-                            onPressed: _goToDetail,
-                            child: const Text("Ver más"),
                           ),
-                        ],
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    Text(
+                      "${widget.event.date} • ${widget.event.type}",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: theme.colorScheme.onSurface.withOpacity(0.7),
                       ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // 🔘 VER MÁS
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: _goToDetail,
+                      child: const Text("Ver más"),
                     ),
                   ],
                 ),
-
-                // ❤️ Icono de favoritos (tap solo ahí para fav)
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: GestureDetector(
-                    onTap: _toggleFavorite,
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      transitionBuilder: (child, anim) =>
-                          ScaleTransition(scale: anim, child: child),
-                      child: Icon(
-                        _isFavorite ? Icons.favorite : Icons.favorite_border,
-                        key: ValueKey(_isFavorite),
-                        color: _isFavorite
-                            ? Colors.redAccent
-                            : theme.colorScheme.onSurface.withOpacity(0.7),
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

@@ -361,9 +361,48 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  // 🔹 Manejo del pago
+void _showMandatoryInvoicePopup(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 32),
+            SizedBox(width: 10),
+            Text("Factura obligatoria"),
+          ],
+        ),
+        content: const Text(
+          "Para compras mayores a 50 es obligatorio solicitar factura.",
+          style: TextStyle(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Entendido"),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+ // 🔹 Manejo del pago
   Future<void> _handlePayment(
       BuildContext context, String uid, double totalGeneral) async {
+
+    // 🚨 NUEVO: Si el total es >= 50, la factura es obligatoria
+    // 🚨 NUEVO: Si el total es >= 50, la factura es obligatoria
+    if (totalGeneral >= 50 && !_wantsInvoice) {
+      _showMandatoryInvoicePopup(context);  // 👈 popup elegante
+      return;
+    }
+
+
     // ✅ Si desea factura, validar datos personales
     if (_wantsInvoice) {
       final doc = await FirebaseFirestore.instance

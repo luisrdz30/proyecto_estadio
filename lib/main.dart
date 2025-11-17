@@ -102,7 +102,6 @@ class MyApp extends StatelessWidget {
               }
 
               final userType = userTypeSnap.data ?? 'normal';
-              debugPrint("🧠 Usuario detectado en main: $userType");
 
               if (userType == 'admin') {
                 return const AdminHomeScreen();

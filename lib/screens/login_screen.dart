@@ -77,13 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // 🔹 Redirección según rol
       if (userType.trim().toLowerCase() == 'admin' || isAdminClaim) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("🛠 Modo admin detectado, redirigiendo..."),
-            backgroundColor: Colors.green,
-          ),
-        );
-
+        
         // ✅ Forzar cambio total de pantalla (no regresa al login)
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const AdminHomeScreen()),
@@ -91,12 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("👤 Usuario normal detectado"),
-            backgroundColor: Colors.blue,
-          ),
-        );
+        
 
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const HomeScreen()),

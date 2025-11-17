@@ -28,6 +28,10 @@ class _AdminEventoFormScreenState extends State<AdminEventoFormScreen> {
   bool _isActive = true;
   bool _loading = false;
 
+  // Variables internas: fecha y hora seleccionadas
+  DateTime? _selectedParsedDate;
+  TimeOfDay? _selectedParsedTime;
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +47,13 @@ class _AdminEventoFormScreenState extends State<AdminEventoFormScreen> {
     _duration.text = data['duration'] ?? '';
     _image.text = data['image'] ?? '';
     _isActive = data['isActive'] ?? true;
+
+    if (data['eventDate'] is Timestamp) {
+      final d = (data['eventDate'] as Timestamp).toDate();
+      _selectedParsedDate = DateTime(d.year, d.month, d.day);
+      _selectedParsedTime = TimeOfDay(hour: d.hour, minute: d.minute);
+    }
+
     _zones.clear();
     if (data['zones'] is List) {
       for (final z in data['zones']) {
@@ -51,10 +62,48 @@ class _AdminEventoFormScreenState extends State<AdminEventoFormScreen> {
     }
   }
 
+  // ---------- Utilidades ----------
+  String _mesNombre(int mes) {
+    const meses = [
+      "",
+      "enero", "febrero", "marzo", "abril", "mayo", "junio",
+      "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+    ];
+    return meses[mes];
+  }
+
+  Duration _parseDuration(String text) {
+    int hours = 0;
+    int minutes = 0;
+
+    final expH = RegExp(r'(\d+)\s*h');
+    final expM = RegExp(r'(\d+)\s*m');
+
+    final matchH = expH.firstMatch(text);
+    final matchM = expM.firstMatch(text);
+
+    if (matchH != null) hours = int.parse(matchH.group(1)!);
+    if (matchM != null) minutes = int.parse(matchM.group(1)!);
+
+    return Duration(hours: hours, minutes: minutes);
+  }
+
   Future<void> _saveEvent() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _loading = true);
+
+    // Construcción del DateTime final
+    DateTime eventDate = DateTime(
+      _selectedParsedDate?.year ?? DateTime.now().year,
+      _selectedParsedDate?.month ?? DateTime.now().month,
+      _selectedParsedDate?.day ?? DateTime.now().day,
+      _selectedParsedTime?.hour ?? 0,
+      _selectedParsedTime?.minute ?? 0,
+    );
+
+    Duration dur = _parseDuration(_duration.text.trim());
+    DateTime endDateTime = eventDate.add(dur);
 
     final data = {
       'title': _title.text.trim(),
@@ -66,7 +115,8 @@ class _AdminEventoFormScreenState extends State<AdminEventoFormScreen> {
       'image': _image.text.trim(),
       'isActive': _isActive,
       'zones': _zones,
-      'eventDate': DateTime.tryParse(_date.text) ?? DateTime.now(),
+      'eventDate': Timestamp.fromDate(eventDate),
+      'endDateTime': Timestamp.fromDate(endDateTime),
       'createdAt': FieldValue.serverTimestamp(),
     };
 
@@ -88,6 +138,8 @@ class _AdminEventoFormScreenState extends State<AdminEventoFormScreen> {
     setState(() => _loading = false);
   }
 
+  //--------------------------- UI ------------------------------
+
   @override
   Widget build(BuildContext context) {
     final theme = ThemeSync.currentTheme;
@@ -100,92 +152,193 @@ class _AdminEventoFormScreenState extends State<AdminEventoFormScreen> {
           backgroundColor: theme.colorScheme.primary,
           title: Text(widget.eventId == null ? "Nuevo Evento" : "Editar Evento"),
         ),
-        body: Padding(
+        body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Form(
             key: _formKey,
-            child: ListView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextFormField(
-                  controller: _title,
-                  decoration: const InputDecoration(labelText: "Título"),
-                  validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
-                ),
-                TextFormField(
-                  controller: _type,
-                  decoration: const InputDecoration(labelText: "Tipo"),
-                ),
-                TextFormField(
-                  controller: _description,
-                  decoration: const InputDecoration(labelText: "Descripción"),
-                  maxLines: 2,
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _date,
-                        decoration: const InputDecoration(labelText: "Fecha"),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _time,
-                        decoration: const InputDecoration(labelText: "Hora"),
-                      ),
-                    ),
-                  ],
-                ),
-                TextFormField(
-                  controller: _duration,
-                  decoration: const InputDecoration(labelText: "Duración"),
-                ),
-                TextFormField(
-                  controller: _image,
-                  decoration: const InputDecoration(labelText: "URL de imagen"),
-                ),
-                SwitchListTile(
-                  title: const Text("Evento activo"),
-                  value: _isActive,
-                  onChanged: (v) => setState(() => _isActive = v),
-                ),
-                const SizedBox(height: 15),
 
-                Text("Zonas (localidades)", style: theme.textTheme.titleMedium),
-                ..._zones
-                    .asMap()
-                    .entries
-                    .map((e) => ZoneFieldWidget(
-                          index: e.key,
-                          zoneData: e.value,
-                          onDelete: () => setState(() => _zones.removeAt(e.key)),
-                        )),
-                TextButton.icon(
-                  onPressed: () => setState(() => _zones.add({
-                        'name': '',
-                        'price': 0,
-                        'capacity': 0,
-                      })),
-                  icon: const Icon(Icons.add_circle_outline),
-                  label: const Text("Agregar zona"),
+                //---------------- SECCIÓN 1 -------------------
+                _sectionCard(
+                  theme,
+                  "Información del evento",
+                  Column(
+                    children: [
+                      _input(_title, "Título *", required: true),
+                      _input(_type, "Tipo"),
+                      _input(_description, "Descripción", maxLines: 2),
+                    ],
+                  ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
+                //---------------- SECCIÓN 2: FECHA Y HORA -------------------
+                _sectionCard(
+                  theme,
+                  "Fecha y hora",
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      GestureDetector(
+                        onTap: () async {
+                          FocusScope.of(context).unfocus();
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _selectedParsedDate ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2035),
+                            locale: const Locale("es", "ES"),
+                          );
+                          if (picked != null) {
+                            _selectedParsedDate = picked;
+                            _date.text = "${picked.day} de ${_mesNombre(picked.month)} de ${picked.year}";
+                            setState(() {});
+                          }
+                        },
+                        child: AbsorbPointer(
+                          child: _input(_date, "Fecha"),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      GestureDetector(
+                        onTap: () async {
+                          FocusScope.of(context).unfocus();
+                          final picked = await showTimePicker(
+                            context: context,
+                            initialTime: _selectedParsedTime ?? TimeOfDay.now(),
+                          );
+                          if (picked != null) {
+                            _selectedParsedTime = picked;
+                            _time.text = picked.format(context); // AM/PM
+                            setState(() {});
+                          }
+                        },
+                        child: AbsorbPointer(
+                          child: _input(_time, "Hora"),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                //---------------- SECCIÓN 3 -------------------
+                _sectionCard(
+                  theme,
+                  "Detalles del evento",
+                  Column(
+                    children: [
+                      _input(_duration, "Duración (ej: 2h, 90m, 1h 30m)"),
+                      _input(_image, "URL de imagen"),
+                      SwitchListTile(
+                        title: Text("Evento activo",
+                            style: TextStyle(color: theme.colorScheme.onSurface)),
+                        value: _isActive,
+                        onChanged: (v) => setState(() => _isActive = v),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                //---------------- SECCIÓN 4 -------------------
+                _sectionCard(
+                  theme,
+                  "Zonas / Localidades",
+                  Column(
+                    children: [
+                      ..._zones.asMap().entries.map(
+                        (e) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: ZoneFieldWidget(
+                            index: e.key,
+                            zoneData: e.value,
+                            onDelete: () => setState(() => _zones.removeAt(e.key)),
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => setState(() => _zones.add({
+                          'name': '',
+                          'price': 0,
+                          'capacity': 0,
+                        })),
+                        icon: const Icon(Icons.add_circle_outline),
+                        label: const Text("Agregar zona"),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
 
                 ElevatedButton.icon(
                   onPressed: _loading ? null : _saveEvent,
                   icon: const Icon(Icons.save),
                   label: Text(_loading ? "Guardando..." : "Guardar evento"),
                   style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
+                    minimumSize: const Size(double.infinity, 55),
                     backgroundColor: theme.colorScheme.primary,
                     foregroundColor: theme.colorScheme.onPrimary,
                   ),
                 ),
+
+                const SizedBox(height: 20),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _input(TextEditingController c, String label,
+      {bool required = false, int maxLines = 1}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextFormField(
+        controller: c,
+        maxLines: maxLines,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor:
+              ThemeSync.currentTheme.colorScheme.surface.withOpacity(0.9),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        validator: required ? (v) => v!.isEmpty ? "Campo obligatorio" : null : null,
+      ),
+    );
+  }
+
+  Widget _sectionCard(ThemeData theme, String title, Widget child) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: theme.colorScheme.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            child,
+          ],
         ),
       ),
     );

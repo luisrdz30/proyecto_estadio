@@ -46,10 +46,8 @@ class _LocationScreenState extends State<LocationScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Cerrar',
-                style: TextStyle(color: theme.colorScheme.primary),
-              ),
+              child: Text('Cerrar',
+                  style: TextStyle(color: theme.colorScheme.primary)),
             ),
           ],
         ),
@@ -83,176 +81,178 @@ class _LocationScreenState extends State<LocationScreen> {
           backgroundColor: theme.colorScheme.primary,
           foregroundColor: theme.colorScheme.onPrimary,
         ),
-        body: Stack(
-          children: [
-            SingleChildScrollView(
-              child: Column(
-                children: [
-                  // 🗺️ Mapa grande
-                  Container(
-                    margin: const EdgeInsets.all(16),
-                    height: screenHeight * 0.6,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
-                          blurRadius: 8,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              // 🗺️ MAPA
+              Container(
+                margin: const EdgeInsets.all(16),
+                height: screenHeight * 0.6,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 5),
                     ),
-                    clipBehavior: Clip.hardEdge,
-                    child: Stack(
-                      children: [
-                        GoogleMap(
-                          onMapCreated: (controller) {
-                            _mapController = controller;
-                            setState(() => _isMapReady = true);
-                          },
-                          initialCameraPosition: const CameraPosition(
-                            target: _stadiumLatLng,
-                            zoom: 15.8,
-                          ),
-                          markers: {
-                            Marker(
-                              markerId: const MarkerId("stadium"),
-                              position: _stadiumLatLng,
-                              infoWindow: InfoWindow(
-                                title: "Estadio Olímpico Atahualpa",
-                              ),
-                            ),
-                          },
-                          // ✅ Habilitar gestos y controles básicos
-                          zoomGesturesEnabled: true,
-                          scrollGesturesEnabled: true,
-                          rotateGesturesEnabled: true,
-                          tiltGesturesEnabled: true,
-                          mapToolbarEnabled: false,
-                          myLocationButtonEnabled: false,
-                          mapType: MapType.normal,
-                        ),
-                        if (!_isMapReady)
-                          Center(
-                            child: CircularProgressIndicator(
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  // 📍 Info del estadio
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Card(
-                      color: theme.colorScheme.surface,
-                      elevation: 3,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                  ],
+                ),
+                clipBehavior: Clip.hardEdge,
+                child: Stack(
+                  children: [
+                    GoogleMap(
+                      onMapCreated: (controller) {
+                        _mapController = controller;
+                        setState(() => _isMapReady = true);
+                      },
+                      initialCameraPosition: const CameraPosition(
+                        target: _stadiumLatLng,
+                        zoom: 15.8,
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _stadiumName,
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.onSurface,
-                              ),
+                      markers: {
+                        Marker(
+                          markerId: const MarkerId("stadium"),
+                          position: _stadiumLatLng,
+                          infoWindow: const InfoWindow(
+                            title: "Estadio Olímpico Atahualpa",
+                          ),
+                        ),
+                      },
+                      mapToolbarEnabled: false,
+                      myLocationButtonEnabled: false,
+                      mapType: MapType.normal,
+                    ),
+
+                    // 🌐 BOTÓN DE CENTRAR MAPA
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Material(
+                        color: Colors.white,
+                        elevation: 4,
+                        shape: const CircleBorder(),
+                        clipBehavior: Clip.hardEdge,
+                        child: InkWell(
+                          onTap: _centerMap,
+                          child: const SizedBox(
+                            width: 45,
+                            height: 45,
+                            child: Icon(
+                              Icons.my_location,
+                              color: Colors.blueAccent,
+                              size: 26,
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _stadiumAddress,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: isDark
-                                    ? Colors.grey[300]
-                                    : theme.colorScheme.onSurface.withOpacity(0.7),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: const [
-                                Icon(Icons.people_alt_outlined, size: 22),
-                                SizedBox(width: 8),
-                                Text("Capacidad: 35.000 personas"),
-                              ],
-                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // ⏳ LOADING DEL MAPA
+                    if (!_isMapReady)
+                      Center(
+                        child: CircularProgressIndicator(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              // 📌 INFO DEL ESTADIO
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Card(
+                  color: theme.colorScheme.surface,
+                  elevation: 3,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _stadiumName,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _stadiumAddress,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: isDark
+                                ? Colors.grey[300]
+                                : theme.colorScheme.onSurface.withOpacity(0.7),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: const [
+                            Icon(Icons.people_alt_outlined, size: 22),
+                            SizedBox(width: 8),
+                            Text("Capacidad: 35.000 personas"),
                           ],
                         ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // 🔘 Botones
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _openGoogleMaps,
-                            icon: const Icon(Icons.directions_outlined),
-                            label: const Text("Cómo llegar"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: theme.colorScheme.primary,
-                              foregroundColor: theme.colorScheme.onPrimary,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              Share.share(
-                                '📍 $_stadiumName\n$_stadiumAddress\nhttps://maps.google.com/?q=${_stadiumLatLng.latitude},${_stadiumLatLng.longitude}',
-                              );
-                            },
-                            icon: const Icon(Icons.share),
-                            label: const Text("Compartir"),
-                            style: OutlinedButton.styleFrom(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                              side: BorderSide(
-                                  color: theme.colorScheme.primary, width: 2),
-                              foregroundColor: theme.colorScheme.primary,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 80),
-                ],
+                ),
               ),
-            ),
 
-            // 📍 Botón para recentrar
-            Positioned(
-              bottom: 30,
-              right: 20,
-              child: FloatingActionButton(
-                heroTag: "centerMapBtn",
-                backgroundColor: theme.colorScheme.primary,
-                onPressed: _centerMap,
-                tooltip: 'Centrar mapa',
-                child: const Icon(Icons.my_location, color: Colors.white),
+              const SizedBox(height: 16),
+
+              // 🔘 BOTONES
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _openGoogleMaps,
+                        icon: const Icon(Icons.directions_outlined),
+                        label: const Text("Cómo llegar"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Share.share(
+                            '📍 $_stadiumName\n$_stadiumAddress\nhttps://maps.google.com/?q=${_stadiumLatLng.latitude},${_stadiumLatLng.longitude}',
+                          );
+                        },
+                        icon: const Icon(Icons.share),
+                        label: const Text("Compartir"),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(
+                              color: theme.colorScheme.primary, width: 2),
+                          foregroundColor: theme.colorScheme.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 80),
+            ],
+          ),
         ),
       ),
     );

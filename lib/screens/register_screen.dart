@@ -63,7 +63,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         });
 
         // Enviar correo de verificación
-        if (user != null && !user.emailVerified) {
+        if (!user.emailVerified) {
             await user.sendEmailVerification();
          }
 
