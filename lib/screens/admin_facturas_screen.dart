@@ -30,17 +30,24 @@ class _AdminFacturasScreenState extends State<AdminFacturasScreen> {
     setState(() => _isLoading = true);
 
     try {
-      Query query = FirebaseFirestore.instance.collection('facturas');
+      final snapshot = await FirebaseFirestore.instance
+          .collection('facturas')
+          .orderBy('createdAt', descending: true)
+          .get();
 
-      if (_cedulaController.text.isNotEmpty) {
-        query = query.where('idNumber', isEqualTo: _cedulaController.text.trim());
-      }
+      // Filtrar por cédula localmente (evita errores en Firestore)
+      final buscarCedula = _cedulaController.text.trim();
 
-      final snapshot = await query.orderBy('createdAt', descending: true).get();
+      final docsFiltrados = snapshot.docs.where((doc) {
+        if (buscarCedula.isEmpty) return true;
+
+        final data = doc.data() as Map<String, dynamic>;
+        return (data['idNumber']?.toString() ?? "").contains(buscarCedula);
+      }).toList();
 
       final List<Map<String, dynamic>> loaded = [];
 
-      for (final doc in snapshot.docs) {
+      for (final doc in docsFiltrados) {
         final data = doc.data() as Map<String, dynamic>;
 
         final createdAt = data['createdAt'] is Timestamp
@@ -86,73 +93,222 @@ class _AdminFacturasScreenState extends State<AdminFacturasScreen> {
     }
   }
 
-  /// 📄 Generar PDF completo con datos del cliente
   Future<void> _generatePDF(Map<String, dynamic> factura) async {
-    final pdf = pw.Document();
+  final pdf = pw.Document();
 
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Padding(
-            padding: const pw.EdgeInsets.all(24),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  "Factura N° ${factura['id']}",
-                  style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
-                ),
-                pw.SizedBox(height: 10),
-                pw.Text("Cliente: ${factura['userName']}"),
-                pw.Text("Cédula: ${factura['idNumber']}"),
-                pw.Text("Dirección: ${factura['address']}"),
-                pw.Text("Teléfono: ${factura['phone']}"),
-                pw.Text("Correo: ${factura['email']}"),
-                pw.SizedBox(height: 10),
-                pw.Text(
-                    "Fecha de emisión: ${factura['createdAt'] != null ? factura['createdAt'].toString().split('.')[0] : '—'}"),
-                pw.Divider(),
-                pw.SizedBox(height: 10),
-                pw.Text("🧾 Detalle de la compra:",
-                    style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(height: 8),
-                ...((factura['items'] as List).map((item) {
-                  final mapItem = Map<String, dynamic>.from(item);
-                  return pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 2),
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text("${mapItem['title']} (${mapItem['type'] ?? ''})"),
-                        pw.Row(
-                          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                          children: [
-                            pw.Text("Fecha: ${mapItem['date']}  Hora: ${mapItem['time']}"),
-                            pw.Text("\$${(mapItem['total'] ?? 0).toStringAsFixed(2)}"),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList()),
-                pw.Divider(),
-                pw.Align(
-                  alignment: pw.Alignment.centerRight,
-                  child: pw.Text(
-                    "Total: \$${(factura['total'] as num).toStringAsFixed(2)}",
-                    style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
-                  ),
-                ),
-              ],
+  pdf.addPage(
+    pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(24),
+      build: (pw.Context context) {
+        return pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+
+            pw.Text(
+              "Factura N° ${factura['id']}",
+              style: pw.TextStyle(
+                fontSize: 20,
+                fontWeight: pw.FontWeight.bold,
+              ),
             ),
-          );
-        },
-      ),
-    );
+            pw.SizedBox(height: 10),
 
-    await Printing.layoutPdf(onLayout: (format) async => pdf.save());
-  }
+            pw.Text("Cliente: ${factura['userName']}"),
+            pw.Text("Cédula: ${factura['idNumber']}"),
+            pw.Text("Dirección: ${factura['address']}"),
+            pw.Text("Teléfono: ${factura['phone']}"),
+            pw.Text("Correo: ${factura['email']}"),
+
+            pw.SizedBox(height: 10),
+
+            pw.Divider(),
+            pw.SizedBox(height: 10),
+
+            pw.Text(
+              "Detalle de la compra",
+              style: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            pw.SizedBox(height: 10),
+
+            ...((factura['items'] as List).map((item) {
+              final mapItem = Map<String, dynamic>.from(item);
+
+              final List zones = mapItem['zones'] ?? [];
+
+              return pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  // ⭐ Título del evento
+                  pw.Text(
+                    "${mapItem['title']} (${mapItem['type']})",
+                    style: pw.TextStyle(
+                      fontSize: 14,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 3),
+
+                  // 🗓 Fecha y hora del evento
+                  pw.Text(
+                    "Fecha: ${mapItem['date']}     Hora: ${mapItem['time']}",
+                    style: const pw.TextStyle(fontSize: 12),
+                  ),
+                  pw.SizedBox(height: 6),
+
+                  // ⭐ SI TIENE ZONAS → Tabla bonita
+                  if (zones.isNotEmpty) ...[
+                    pw.Container(
+                      padding: const pw.EdgeInsets.all(6),
+                      decoration: pw.BoxDecoration(
+                        border: pw.Border.all(width: 1),
+                        borderRadius: pw.BorderRadius.circular(4),
+                      ),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            "Localidades:",
+                            style: pw.TextStyle(
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                          pw.SizedBox(height: 6),
+
+                          pw.Table(
+                            border: pw.TableBorder.all(width: 0.5),
+                            columnWidths: {
+                              0: const pw.FlexColumnWidth(3),
+                              1: const pw.FlexColumnWidth(1),
+                              2: const pw.FlexColumnWidth(2),
+                              3: const pw.FlexColumnWidth(2),
+                            },
+                            children: [
+                              pw.TableRow(
+                                decoration:
+                                    pw.BoxDecoration(color: PdfColors.grey300),
+                                children: [
+                                  pw.Padding(
+                                    padding: const pw.EdgeInsets.all(4),
+                                    child: pw.Text("Nombre",
+                                        style: pw.TextStyle(
+                                            fontWeight:
+                                                pw.FontWeight.bold)),
+                                  ),
+                                  pw.Padding(
+                                    padding: const pw.EdgeInsets.all(4),
+                                    child: pw.Text("Cant.",
+                                        style: pw.TextStyle(
+                                            fontWeight:
+                                                pw.FontWeight.bold)),
+                                  ),
+                                  pw.Padding(
+                                    padding: const pw.EdgeInsets.all(4),
+                                    child: pw.Text("Precio",
+                                        style: pw.TextStyle(
+                                            fontWeight:
+                                                pw.FontWeight.bold)),
+                                  ),
+                                  pw.Padding(
+                                    padding: const pw.EdgeInsets.all(4),
+                                    child: pw.Text("Subtotal",
+                                        style: pw.TextStyle(
+                                            fontWeight:
+                                                pw.FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+
+                              ...zones.map<pw.TableRow>((z) {
+                                final zona = Map<String, dynamic>.from(z);
+                                return pw.TableRow(
+                                  children: [
+                                    pw.Padding(
+                                        padding:
+                                            const pw.EdgeInsets.all(4),
+                                        child: pw.Text(zona['name'])),
+                                    pw.Padding(
+                                        padding:
+                                            const pw.EdgeInsets.all(4),
+                                        child:
+                                            pw.Text("${zona['count']}")),
+                                    pw.Padding(
+                                        padding:
+                                            const pw.EdgeInsets.all(4),
+                                        child: pw.Text(
+                                            "\$${zona['price']}")),
+                                    pw.Padding(
+                                        padding:
+                                            const pw.EdgeInsets.all(4),
+                                        child: pw.Text(
+                                            "\$${zona['subtotal']}")),
+                                  ],
+                                );
+                              }).toList(),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    pw.SizedBox(height: 10),
+
+                    // Total del evento (sumatoria de zonas)
+                    pw.Align(
+                      alignment: pw.Alignment.centerRight,
+                      child: pw.Text(
+                        "Total evento: \$${mapItem['total']}",
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  // ⭐ Si NO tiene zonas → solo mostrar total como antes
+                  if (zones.isEmpty)
+                    pw.Align(
+                      alignment: pw.Alignment.centerRight,
+                      child: pw.Text(
+                        "Total: \$${mapItem['total']}",
+                        style: pw.TextStyle(
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                    ),
+
+                  pw.SizedBox(height: 20),
+                ],
+              );
+            }).toList()),
+
+            pw.Divider(),
+
+            // 🔥 TOTAL GENERAL
+            pw.Align(
+              alignment: pw.Alignment.centerRight,
+              child: pw.Text(
+                "TOTAL A PAGAR: \$${factura['total']}",
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+
+  await Printing.layoutPdf(onLayout: (format) async => pdf.save());
+}
+
 
   Future<void> _selectFechaInicio(BuildContext context) async {
     final picked = await showDatePicker(

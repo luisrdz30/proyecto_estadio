@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme_sync.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AdminUsersScreen extends StatefulWidget {
   const AdminUsersScreen({super.key});
@@ -18,12 +19,36 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   String _searchQuery = "";
   String _filterRole = "Todos"; // Todos, admin, normal
 
+  Map<String, dynamic>? currentUserData;
+
   @override
   void initState() {
     super.initState();
     _loadUsers();
+    _loadCurrentUser(); 
   }
 
+  Future<void> _loadCurrentUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('personalData')
+        .doc('info')
+        .get();
+
+    if (mounted) {
+      setState(() {
+        currentUserData = {
+          'name': doc.data()?['name'] ?? 'Sin nombre',
+          'email': doc.data()?['email'] ?? user.email ?? '—',
+          'userType': doc.data()?['userType'] ?? 'normal',
+        };
+      });
+    }
+  }
   /// 🔹 Cargar usuarios desde Firestore
   Future<void> _loadUsers() async {
     setState(() => _isLoading = true);
@@ -149,7 +174,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "👥 Usuarios registrados",
+              "👥 Usuarios",
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -158,7 +183,70 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             ),
 
             const SizedBox(height: 12),
+            /// 🔹 INFO DEL USUARIO ACTUAL — SE AGREGA AQUÍ
+            if (currentUserData != null) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
+                      child: Icon(Icons.person,
+                          color: theme.colorScheme.primary, size: 28),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            currentUserData!['name'],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            currentUserData!['email'],
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurface.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Chip(
+                      label: Text(
+                        currentUserData!['userType'].toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      backgroundColor: currentUserData!['userType'] == 'admin'
+                          ? Colors.teal
+                          : theme.colorScheme.primary,
+                    ),
+                  ],
+                ),
+              ),
 
+              const SizedBox(height: 16),
+            ],
             /// 🔍 BÚSQUEDA
             TextField(
               onChanged: (value) {

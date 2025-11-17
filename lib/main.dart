@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 // 🧭 Pantallas
 import 'screens/login_screen.dart';
@@ -76,6 +77,17 @@ class MyApp extends StatelessWidget {
         '/cart_screen': (context) => const CartScreen(),
         '/my_tickets_screen': (context) => const MyTicketsScreen(),
       },
+
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+
+      supportedLocales: const [
+        Locale('es', 'ES'), // español
+        Locale('en', 'US'), // inglés (por si acaso)
+      ],
 
       // 👇 AQUÍ EL CAMBIO: ahora verificamos tipo de usuario antes de decidir pantalla inicial
       home: StreamBuilder<User?>(

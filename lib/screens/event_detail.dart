@@ -40,25 +40,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
     return sum;
   }
-
   Future<void> _toggleFavorite() async {
     if (_isFavorite) {
       await _favoritesService.removeFavorite(widget.event.title);
-      _showPopup(
-        title: "Eliminado",
-        message: "${widget.event.title} fue eliminado de favoritos 💔",
-        icon: Icons.favorite_border,
-        color: Colors.redAccent,
-      );
     } else {
       await _favoritesService.addFavorite(widget.event);
-      _showPopup(
-        title: "Añadido",
-        message: "${widget.event.title} se añadió a tus favoritos ❤️",
-        icon: Icons.favorite,
-        color: Colors.pinkAccent,
-      );
     }
+
     setState(() => _isFavorite = !_isFavorite);
   }
 

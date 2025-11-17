@@ -152,15 +152,14 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           facturaTotal = (data['total'] as num).toDouble();
         }
 
-        final title = (data['items'] is List && (data['items'] as List).isNotEmpty)
-            ? (((data['items'] as List).first as Map?)?['title'] ?? 'Compra')
-            : 'Compra';
+        final buyerName = data['userName'] ?? 'Consumidor final';
 
         recent.add({
-          'title': title.toString(),
+          'title': buyerName,
           'total': facturaTotal,
           'createdAt': created,
         });
+
       }
 
       if (!mounted) return;
@@ -260,6 +259,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   title: "Usuarios registrados",
                   value: "$totalUsers",
                   color: Colors.teal,
+                  onTap: () {
+                    setState(() => _selectedIndex = 1); // Ir a AdminUsersScreen
+                  },
                 ),
                 _buildDashboardCard(
                   theme,
@@ -267,6 +269,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   title: "Eventos activos",
                   value: "$totalEvents",
                   color: Colors.indigo,
+                  onTap: () {
+                    setState(() => _selectedIndex = 2); // Ir a AdminEventosScreen
+                  },
                 ),
                 _buildDashboardCard(
                   theme,
@@ -274,6 +279,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   title: "Ventas del día",
                   value: "\$${totalSalesToday.toStringAsFixed(2)}",
                   color: Colors.orange,
+                  onTap: () {
+                    setState(() => _selectedIndex = 3); // Ir a AdminFacturasScreen
+                  },
                 ),
                 _buildDashboardCard(
                   theme,
@@ -281,7 +289,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   title: "Facturas registradas",
                   value: "$totalFacturas",
                   color: Colors.purple,
+                  onTap: () {
+                    setState(() => _selectedIndex = 3); // Ir a AdminFacturasScreen
+                  },
                 ),
+
               ],
             ),
 
@@ -334,38 +346,44 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     required String title,
     required String value,
     required Color color,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.5), width: 1.5),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 36),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onSurface,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.5), width: 1.5),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 36),
+            const SizedBox(height: 10),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
+              ),
             ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: theme.colorScheme.onSurfaceVariant,
+            const SizedBox(height: 5),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+
 }

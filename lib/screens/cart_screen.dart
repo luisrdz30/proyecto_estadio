@@ -609,7 +609,7 @@ void _showMandatoryInvoicePopup(BuildContext context) {
                                 color: Colors.green, size: 90),
                             const SizedBox(height: 16),
                             const Text(
-                              "¡Compra realizada con éxito! 🎉",
+                              "¡Compra realizada con éxito! Su factura se la enviara por correo!",
                               style: TextStyle(
                                   fontSize: 18, fontWeight: FontWeight.bold),
                               textAlign: TextAlign.center,
