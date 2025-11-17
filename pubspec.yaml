@@ -27,6 +27,10 @@ dependencies:
   flutter_launcher_icons: ^0.14.4
   pdf: ^3.10.6
   printing: ^5.12.0
+  firebase_storage: ^13.0.4
+  image_picker: ^1.0.7
+  confetti: ^0.7.0
+
 
 dev_dependencies:
   flutter_test:

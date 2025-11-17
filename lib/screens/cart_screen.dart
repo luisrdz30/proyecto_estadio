@@ -589,7 +589,7 @@ void _showMandatoryInvoicePopup(BuildContext context) {
               contentPadding: const EdgeInsets.all(24),
               content: SizedBox(
                 width: 300,
-                height: 260,
+                height: 300,
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 500),
                   child: isProcessing

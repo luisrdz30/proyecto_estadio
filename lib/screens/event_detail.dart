@@ -221,12 +221,40 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                "${event.date} • ${event.time} • Duración: ${event.duration}",
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "📅 Fecha:  ${event.date}",
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.onSurface.withOpacity(0.85),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+
+                  Text(
+                    "⏰ Hora:  ${event.time}",
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.onSurface.withOpacity(0.85),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+
+                  Text(
+                    "⏳ Duración:  ${event.duration}",
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.onSurface.withOpacity(0.85),
+                    ),
+                  ),
+                ],
               ),
+
               const SizedBox(height: 16),
 
               Text(

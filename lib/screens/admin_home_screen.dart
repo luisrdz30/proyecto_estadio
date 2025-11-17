@@ -7,6 +7,7 @@ import 'admin_users_screen.dart';
 import 'admin_events_screen.dart'; // 👈 asegúrate de que el archivo tenga este nombre exacto
 import 'admin_facturas_screen.dart';
 import '../widgets/admin_navbar.dart';
+import 'admin_announcements_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -285,15 +286,17 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 ),
                 _buildDashboardCard(
                   theme,
-                  icon: Icons.receipt_long,
-                  title: "Facturas registradas",
-                  value: "$totalFacturas",
+                  icon: Icons.campaign,
+                  title: "Anuncios",
+                  value: "Administrar",
                   color: Colors.purple,
                   onTap: () {
-                    setState(() => _selectedIndex = 3); // Ir a AdminFacturasScreen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AdminAnnouncementsScreen()),
+                    );
                   },
                 ),
-
               ],
             ),
 

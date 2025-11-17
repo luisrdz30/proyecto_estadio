@@ -54,20 +54,38 @@ class _AdminEventosScreenState extends State<AdminEventosScreen> {
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          backgroundColor: theme.colorScheme.primary,
-          foregroundColor: theme.colorScheme.onPrimary,
-          icon: const Icon(Icons.add),
-          label: const Text("Nuevo evento"),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const AdminEventoFormScreen(),
+        floatingActionButton: null, // Quitamos el FAB
+
+        bottomNavigationBar: Padding(
+          padding: const EdgeInsets.all(12),
+          child: SizedBox(
+            width: double.infinity,
+            height: 55,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-            );
-          },
+              icon: const Icon(Icons.add),
+              label: const Text(
+                "Nuevo evento",
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AdminEventoFormScreen(),
+                  ),
+                );
+              },
+            ),
+          ),
         ),
+
         body: StreamBuilder<QuerySnapshot>(
           stream: _getEventosStream(),
           builder: (context, snapshot) {
