@@ -25,7 +25,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   void initState() {
     super.initState();
     _loadUsers();
-    _loadCurrentUser(); 
+    _loadCurrentUser();
   }
 
   Future<void> _loadCurrentUser() async {
@@ -49,6 +49,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       });
     }
   }
+
   /// 🔹 Cargar usuarios desde Firestore
   Future<void> _loadUsers() async {
     setState(() => _isLoading = true);
@@ -107,7 +108,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     setState(() {});
   }
 
-  /// 🔄 Cambiar rol con popup
+  /// 🔄 Cambiar rol
   Future<void> _changeUserRole(Map<String, dynamic> user) async {
     final theme = ThemeSync.currentTheme;
 
@@ -155,9 +156,133 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           .doc('info')
           .update({'userType': newRole});
 
-      await _loadUsers(); // Refrescar lista
+      await _loadUsers();
     } catch (e) {
       debugPrint("❌ Error cambiando rol: $e");
+    }
+  }
+
+  /// 🗑️ Confirmar eliminación escribiendo el correo
+  Future<void> _confirmDeleteUser(Map<String, dynamic> user) async {
+    final theme = ThemeSync.currentTheme;
+    final TextEditingController controller = TextEditingController();
+
+    final email = user['email'] ?? '—';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: const [
+              Icon(Icons.warning_amber_rounded, color: Colors.red, size: 30),
+              SizedBox(width: 10),
+              Text("Eliminar usuario"),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Para confirmar, escribe el correo EXACTO del usuario:",
+                style: TextStyle(fontSize: 15),
+              ),
+              const SizedBox(height: 10),
+
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  email,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 15),
+
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  labelText: "Escribe el correo para confirmar",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              child: const Text("Cancelar"),
+              onPressed: () => Navigator.pop(context, false),
+            ),
+            TextButton(
+              child: const Text("Eliminar", style: TextStyle(color: Colors.red)),
+              onPressed: () {
+                if (controller.text.trim().toLowerCase() ==
+                    email.toLowerCase()) {
+                  Navigator.pop(context, true);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("El correo no coincide."),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      _deleteUser(user['id']);
+    }
+  }
+
+  /// 🗑️ Eliminar usuario + subcolección
+  Future<void> _deleteUser(String userId) async {
+    try {
+      final personalDataSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('personalData')
+          .get();
+
+      for (var doc in personalDataSnap.docs) {
+        await doc.reference.delete();
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Usuario eliminado correctamente"),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      await _loadUsers();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error al eliminar: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -183,7 +308,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             ),
 
             const SizedBox(height: 12),
-            /// 🔹 INFO DEL USUARIO ACTUAL — SE AGREGA AQUÍ
+
+            /// INFO DEL USUARIO ACTUAL
             if (currentUserData != null) ...[
               Container(
                 padding: const EdgeInsets.all(14),
@@ -247,7 +373,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
               const SizedBox(height: 16),
             ],
-            /// 🔍 BÚSQUEDA
+
+            /// BUSCAR
             TextField(
               onChanged: (value) {
                 _searchQuery = value.trim().toLowerCase();
@@ -267,7 +394,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
             const SizedBox(height: 12),
 
-            /// 🔽 FILTRO POR ROL
+            /// FILTRO POR ROL
             DropdownButtonFormField<String>(
               initialValue: _filterRole,
               items: const [
@@ -289,7 +416,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
             const SizedBox(height: 20),
 
-            // 🔄 Indicador de carga
+            /// LISTA
             if (_isLoading)
               const Expanded(child: Center(child: CircularProgressIndicator()))
             else if (_filteredUsers.isEmpty)
@@ -304,13 +431,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 ),
               )
             else
-              /// 📋 LISTA DE USUARIOS
               Expanded(
                 child: ListView.separated(
                   itemCount: _filteredUsers.length,
                   separatorBuilder: (_, __) => const Divider(height: 16),
                   itemBuilder: (context, index) {
                     final user = _filteredUsers[index];
+
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
@@ -321,21 +448,34 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       subtitle: Text(user['email']),
-                      trailing: Chip(
-                        label: Text(
-                          user['userType'].toString().toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Chip(
+                            label: Text(
+                              user['userType'].toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            backgroundColor: user['userType'] == 'admin'
+                                ? Colors.teal
+                                : theme.colorScheme.primary,
                           ),
-                        ),
-                        backgroundColor: user['userType'] == 'admin'
-                            ? Colors.teal
-                            : theme.colorScheme.primary,
+                          const SizedBox(width: 8),
+
+                          /// 🗑️ BOTÓN ELIMINAR
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _confirmDeleteUser(user),
+                          ),
+                        ],
                       ),
 
-                      /// 👇 TAP — Cambiar rol
+                      /// Cambiar rol cuando se toca
                       onTap: () => _changeUserRole(user),
                     );
                   },

@@ -41,14 +41,14 @@ class _AdminFacturasScreenState extends State<AdminFacturasScreen> {
       final docsFiltrados = snapshot.docs.where((doc) {
         if (buscarCedula.isEmpty) return true;
 
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         return (data['idNumber']?.toString() ?? "").contains(buscarCedula);
       }).toList();
 
       final List<Map<String, dynamic>> loaded = [];
 
       for (final doc in docsFiltrados) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
 
         final createdAt = data['createdAt'] is Timestamp
             ? (data['createdAt'] as Timestamp).toDate()
@@ -247,7 +247,7 @@ class _AdminFacturasScreenState extends State<AdminFacturasScreen> {
                                             "\$${zona['subtotal']}")),
                                   ],
                                 );
-                              }).toList(),
+                              }),
                             ],
                           ),
                         ],

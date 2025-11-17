@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:proyecto_estadio/screens/cart_screen.dart';
+import 'package:proyecto_estadio/screens/event_detail.dart';
 import 'package:proyecto_estadio/screens/login_screen.dart';
 import '../models/event.dart';
 import '../services/firestore_service.dart';
@@ -13,6 +16,7 @@ import 'location_screen.dart';
 import '../services/cart_service.dart';
 import 'personal_data_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/zone.dart';
 
 // 🎨 Importamos los temas definidos en main.dart y el gestor global
 import '../main.dart' show lightTheme, darkTheme;
@@ -48,6 +52,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // 🔥 Stream fijo que NO se recrea en cada build
     _eventsStream = _firestoreService.getEvents();
+    _checkAnnouncements();
+
   }
 
   Future<String> _getUsername() async {
@@ -76,6 +82,339 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchController.dispose();
     super.dispose();
   }
+
+  void _checkAnnouncements() async {
+    try {
+      final query = await FirebaseFirestore.instance
+          .collection('announcements')
+          .where('enabled', isEqualTo: true)
+          .get();
+
+      if (query.docs.isEmpty) return;
+
+      final announcements =
+          query.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+
+      Future.delayed(Duration.zero, () {
+        if (announcements.length == 1) {
+          _showSingleAnnouncement(announcements.first);
+        } else {
+          _showAnnouncementCarousel(announcements);
+        }
+      });
+    } catch (e) {
+      print("Error cargando anuncios: $e");
+    }
+  }
+
+void _showSingleAnnouncement(Map<String, dynamic> ann) {
+  final theme = ThemeManager.isDarkMode.value ? darkTheme : lightTheme;
+
+  showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (context) {
+      return Dialog(
+        backgroundColor: theme.colorScheme.surface, // 🔥 Cambia según tema
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        child: Container(
+          width: double.infinity,
+          height: 520, // 🔥 Más grande
+          padding: const EdgeInsets.all(16),
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  // 📸 Imagen grande estilo flyer
+                  if (ann['imageUrl']?.isNotEmpty == true)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.network(
+                        ann['imageUrl'],
+                        height: 300,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+
+                  const SizedBox(height: 16),
+
+                  Text(
+                    ann['title'] ?? '',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Text(
+                    ann['description'] ?? '',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface.withOpacity(0.8),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  if ((ann['eventId'] ?? '').toString().isNotEmpty)
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 40, vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await _openEventFromAnnouncement(ann['eventId']);
+                      },
+                      child: const Text("Ver más"),
+                    ),
+                ],
+              ),
+
+              // ❌ botón cerrar
+              Positioned(
+                right: 4,
+                top: 4,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Colors.black54,
+                    child: const Icon(Icons.close,
+                        size: 16, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+void _showAnnouncementCarousel(List<Map<String, dynamic>> announcements) {
+  final theme = ThemeManager.isDarkMode.value ? darkTheme : lightTheme;
+  final PageController controller = PageController();
+  int currentIndex = 0;
+
+  // 🔥 Auto-play
+  Timer.periodic(const Duration(seconds: 3), (timer) {
+    if (!mounted) {
+      timer.cancel();
+      return;
+    }
+
+    currentIndex = (currentIndex + 1) % announcements.length;
+
+    controller.animateToPage(
+      currentIndex,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+    );
+  });
+
+  showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (context) {
+      return Dialog(
+        backgroundColor: theme.colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        child: Container(
+          width: double.infinity,
+          height: 540, // 🔥 más grande
+          padding: const EdgeInsets.all(16),
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  Expanded(
+                    child: PageView.builder(
+                      controller: controller,
+                      itemCount: announcements.length,
+                      itemBuilder: (context, index) {
+                        final ann = announcements[index];
+                        return Column(
+                          children: [
+                            // Imagen grande
+                            if (ann['imageUrl']?.isNotEmpty == true)
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.network(
+                                  ann['imageUrl'],
+                                  height: 300,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+
+                            const SizedBox(height: 16),
+
+                            Text(
+                              ann['title'] ?? '',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            Text(
+                              ann['description'] ?? '',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color:
+                                    theme.colorScheme.onSurface.withOpacity(0.8),
+                              ),
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            if ((ann['eventId'] ?? '').toString().isNotEmpty)
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 40, vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  Navigator.pop(context);
+                                  await _openEventFromAnnouncement(
+                                      ann['eventId']);
+                                },
+                                child: const Text("Ver más"),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // 🔘 Dots indicadores
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      announcements.length,
+                      (index) => AnimatedBuilder(
+                        animation: controller,
+                        builder: (context, child) {
+                          bool isActive =
+                              controller.hasClients &&
+                                  controller.page?.round() == index;
+
+                          return Container(
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 10),
+                            width: isActive ? 12 : 8,
+                            height: isActive ? 12 : 8,
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? theme.colorScheme.primary
+                                  : Colors.grey,
+                              shape: BoxShape.circle,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // ❌ Botón cerrar
+              Positioned(
+                right: 4,
+                top: 4,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Colors.black54,
+                    child: const Icon(Icons.close,
+                        size: 16, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+
+  Future<void> _openEventFromAnnouncement(String eventId) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('events')
+        .doc(eventId)
+        .get();
+
+    if (!doc.exists) {
+      print("El evento no existe o eventId está mal guardado");
+      return;
+    }
+
+    final data = doc.data()!;
+    final zonesData = data['zones'] ?? [];
+    List<Zone> zones = [];
+
+    if (zonesData is List) {
+      zones = zonesData.map((z) {
+        final zoneMap = Map<String, dynamic>.from(z);
+        return Zone(
+          name: zoneMap['name'] ?? '',
+          price: ((zoneMap['price'] ?? 0) as num).toDouble(),
+          capacity: ((zoneMap['capacity'] ?? 0) as num).toInt(),
+        );
+      }).toList();
+    }
+
+    final event = Event(
+      id: doc.id,
+      title: data['title'] ?? '',
+      type: data['type'] ?? '',
+      date: data['date'] ?? '',
+      time: data['time'] ?? '',
+      duration: data['duration'] ?? '',
+      eventDate: data['eventDate']?.toDate(),
+      description: data['description'] ?? '',
+      image: data['image'] ?? '',
+      zones: zones,
+      capacity: (data['capacity'] ?? 0).toInt(),
+      sold: (data['sold'] ?? 0).toInt(),
+      isActive: data['isActive'] ?? true,
+      endDateTime: data['endDateTime']?.toDate(),
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
