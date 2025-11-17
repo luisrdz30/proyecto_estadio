@@ -106,7 +106,6 @@ class _HomeScreenState extends State<HomeScreen> {
       print("Error cargando anuncios: $e");
     }
   }
-
 void _showSingleAnnouncement(Map<String, dynamic> ann) {
   final theme = ThemeManager.isDarkMode.value ? darkTheme : lightTheme;
 
@@ -114,85 +113,101 @@ void _showSingleAnnouncement(Map<String, dynamic> ann) {
     context: context,
     barrierDismissible: true,
     builder: (context) {
+      final size = MediaQuery.of(context).size;
+      final maxPopupHeight = size.height * 0.90; // 🔥 máximo 90% de pantalla
+      final popupWidth = size.width * 0.85;
+
+      // 🔥 Imagen 9:16 pero limitada
+      double imageHeight = popupWidth * 16 / 9;
+      if (imageHeight > size.height * 0.55) {
+        imageHeight = size.height * 0.55; // evita overflow
+      }
+
       return Dialog(
-        backgroundColor: theme.colorScheme.surface, // 🔥 Cambia según tema
+        backgroundColor: theme.colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
         ),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         child: Container(
-          width: double.infinity,
-          height: 520, // 🔥 Más grande
-          padding: const EdgeInsets.all(16),
+          width: popupWidth,
+          constraints: BoxConstraints(
+            maxHeight: maxPopupHeight,
+          ),
           child: Stack(
             children: [
-              Column(
-                children: [
-                  // 📸 Imagen grande estilo flyer
-                  if (ann['imageUrl']?.isNotEmpty == true)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.network(
-                        ann['imageUrl'],
-                        height: 300,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-
-                  const SizedBox(height: 16),
-
-                  Text(
-                    ann['title'] ?? '',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  Text(
-                    ann['description'] ?? '',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurface.withOpacity(0.8),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  if ((ann['eventId'] ?? '').toString().isNotEmpty)
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 40, vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+              SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.network(
+                          ann['imageUrl'],
+                          width: popupWidth,
+                          height: imageHeight,
+                          fit: BoxFit.cover,
                         ),
                       ),
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await _openEventFromAnnouncement(ann['eventId']);
-                      },
-                      child: const Text("Ver más"),
-                    ),
-                ],
+
+                      const SizedBox(height: 16),
+
+                      Text(
+                        ann['title'] ?? '',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      Text(
+                        ann['description'] ?? '',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface.withOpacity(0.8),
+                          fontSize: 15,
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      if ((ann['eventId'] ?? '').toString().isNotEmpty)
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 40, vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            await _openEventFromAnnouncement(ann['eventId']);
+                          },
+                          child: const Text("Ver más"),
+                        ),
+                    ],
+                  ),
+                ),
               ),
 
-              // ❌ botón cerrar
+              // ❌ Botón cerrar
               Positioned(
-                right: 4,
-                top: 4,
+                right: 8,
+                top: 8,
                 child: GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: CircleAvatar(
                     radius: 14,
                     backgroundColor: Colors.black54,
-                    child: const Icon(Icons.close,
-                        size: 16, color: Colors.white),
+                    child:
+                        const Icon(Icons.close, size: 16, color: Colors.white),
                   ),
                 ),
               ),
@@ -215,9 +230,7 @@ void _showAnnouncementCarousel(List<Map<String, dynamic>> announcements) {
       timer.cancel();
       return;
     }
-
     currentIndex = (currentIndex + 1) % announcements.length;
-
     controller.animateToPage(
       currentIndex,
       duration: const Duration(milliseconds: 400),
@@ -229,124 +242,134 @@ void _showAnnouncementCarousel(List<Map<String, dynamic>> announcements) {
     context: context,
     barrierDismissible: true,
     builder: (context) {
+      final size = MediaQuery.of(context).size;
+
+      final popupWidth = size.width * 0.85;
+      final maxPopupHeight = size.height * 0.90;
+
+      // Imagen responsiva 9:16 que NUNCA rebasa 55% de pantalla
+      double imageHeight = popupWidth * 16 / 9;
+      if (imageHeight > size.height * 0.55) {
+        imageHeight = size.height * 0.55;
+      }
+
+      // 🔥 Altura real del contenido sin dejar huecos
+      final contentHeight = imageHeight + 220;
+
       return Dialog(
         backgroundColor: theme.colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
         ),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         child: Container(
-          width: double.infinity,
-          height: 540, // 🔥 más grande
+          width: popupWidth,
+          height: contentHeight.clamp(0, maxPopupHeight),
           padding: const EdgeInsets.all(16),
           child: Stack(
             children: [
-              Column(
-                children: [
-                  Expanded(
-                    child: PageView.builder(
-                      controller: controller,
-                      itemCount: announcements.length,
-                      itemBuilder: (context, index) {
-                        final ann = announcements[index];
-                        return Column(
-                          children: [
-                            // Imagen grande
-                            if (ann['imageUrl']?.isNotEmpty == true)
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: Image.network(
-                                  ann['imageUrl'],
-                                  height: 300,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
+              // CONTENIDO PRINCIPAL
+              PageView.builder(
+                controller: controller,
+                itemCount: announcements.length,
+                itemBuilder: (context, index) {
+                  final ann = announcements[index];
 
-                            const SizedBox(height: 16),
+                  return Column(
+                    children: [
+                      // 📸 Imagen 9:16 responsiva
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.network(
+                          ann['imageUrl'],
+                          height: imageHeight,
+                          width: popupWidth,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
 
-                            Text(
-                              ann['title'] ?? '',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.onSurface,
-                              ),
+                      const SizedBox(height: 16),
+
+                      Text(
+                        ann['title'] ?? '',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      Text(
+                        ann['description'] ?? '',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color:
+                              theme.colorScheme.onSurface.withOpacity(0.8),
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      if ((ann['eventId'] ?? '').toString().isNotEmpty)
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 40, vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
+                          ),
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            await _openEventFromAnnouncement(ann['eventId']);
+                          },
+                          child: const Text("Ver más"),
+                        ),
+                    ],
+                  );
+                },
+              ),
 
-                            const SizedBox(height: 8),
-
-                            Text(
-                              ann['description'] ?? '',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color:
-                                    theme.colorScheme.onSurface.withOpacity(0.8),
-                              ),
-                            ),
-
-                            const SizedBox(height: 20),
-
-                            if ((ann['eventId'] ?? '').toString().isNotEmpty)
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 40, vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                onPressed: () async {
-                                  Navigator.pop(context);
-                                  await _openEventFromAnnouncement(
-                                      ann['eventId']);
-                                },
-                                child: const Text("Ver más"),
-                              ),
-                          ],
+              // 🔵 Dots bottom indicators
+              Positioned(
+                bottom: 6,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    announcements.length,
+                    (index) => AnimatedBuilder(
+                      animation: controller,
+                      builder: (_, __) {
+                        bool active = controller.hasClients &&
+                            controller.page?.round() == index;
+                        return Container(
+                          margin:
+                              const EdgeInsets.symmetric(horizontal: 4),
+                          width: active ? 12 : 8,
+                          height: active ? 12 : 8,
+                          decoration: BoxDecoration(
+                            color: active
+                                ? theme.colorScheme.primary
+                                : Colors.grey,
+                            shape: BoxShape.circle,
+                          ),
                         );
                       },
                     ),
                   ),
-
-                  const SizedBox(height: 12),
-
-                  // 🔘 Dots indicadores
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      announcements.length,
-                      (index) => AnimatedBuilder(
-                        animation: controller,
-                        builder: (context, child) {
-                          bool isActive =
-                              controller.hasClients &&
-                                  controller.page?.round() == index;
-
-                          return Container(
-                            margin: const EdgeInsets.symmetric(
-                                horizontal: 4, vertical: 10),
-                            width: isActive ? 12 : 8,
-                            height: isActive ? 12 : 8,
-                            decoration: BoxDecoration(
-                              color: isActive
-                                  ? theme.colorScheme.primary
-                                  : Colors.grey,
-                              shape: BoxShape.circle,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
 
               // ❌ Botón cerrar
               Positioned(
-                right: 4,
-                top: 4,
+                right: 8,
+                top: 8,
                 child: GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: CircleAvatar(
@@ -364,7 +387,6 @@ void _showAnnouncementCarousel(List<Map<String, dynamic>> announcements) {
     },
   );
 }
-
 
   Future<void> _openEventFromAnnouncement(String eventId) async {
     final doc = await FirebaseFirestore.instance
