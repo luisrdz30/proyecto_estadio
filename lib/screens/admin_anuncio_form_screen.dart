@@ -184,7 +184,7 @@ class _AdminAnuncioFormScreenState extends State<AdminAnuncioFormScreen> {
                     }).toList();
 
                     return DropdownButtonFormField<String>(
-                      value: _eventId.text.isNotEmpty ? _eventId.text : null,
+                      initialValue: _eventId.text.isNotEmpty ? _eventId.text : null,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         filled: true,

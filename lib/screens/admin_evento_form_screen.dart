@@ -291,7 +291,7 @@ class _AdminEventoFormScreenState extends State<AdminEventoFormScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           DropdownButtonFormField<String>(
-                            value: ["Concierto", "Partido", "Festival", "Show", "Convención"]
+                            initialValue: ["Concierto", "Partido", "Festival", "Show", "Convención"]
                                     .contains(_type.text)
                                 ? _type.text
                                 : "Otro",
@@ -411,7 +411,7 @@ class _AdminEventoFormScreenState extends State<AdminEventoFormScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         DropdownButtonFormField<String>(
-                          value: ["1h", "1h 30m", "2h", "2h 30m", "3h", "4h"]
+                          initialValue: ["1h", "1h 30m", "2h", "2h 30m", "3h", "4h"]
                                   .contains(_duration.text)
                               ? _duration.text
                               : "Otro",

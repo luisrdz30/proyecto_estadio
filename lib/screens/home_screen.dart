@@ -69,6 +69,60 @@ class _HomeScreenState extends State<HomeScreen> {
     return "Usuario";
   }
 
+  void _showSoldOutPopup(String title) {
+    final theme = ThemeSync.currentTheme;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Theme(
+        data: theme,
+        child: Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.block, size: 60, color: Colors.redAccent),
+                const SizedBox(height: 15),
+                Text(
+                  "Evento agotado",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.redAccent,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "El evento \"$title\" está completamente SOLD OUT.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text("Cerrar"),
+                )
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _loadEventTypes() async {
     final allEvents = await _firestoreService.getEvents().first;
     final types = allEvents.map((e) => e.type).toSet().toList()..sort();
@@ -93,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (query.docs.isEmpty) return;
 
       final announcements =
-          query.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+          query.docs.map((doc) => doc.data()).toList();
 
       Future.delayed(Duration.zero, () {
         if (announcements.length == 1) {
@@ -764,7 +818,58 @@ void _showAnnouncementCarousel(List<Map<String, dynamic>> announcements) {
                     itemCount: currentEvents.length,
                     itemBuilder: (context, index) {
                       final event = currentEvents[index];
-                      return EventCard(event: event);
+
+                      // 🔥 Determinar si TODO el evento está sold out
+                      final bool isEventSoldOut = event.zones.every((z) => z.capacity <= 0);
+
+                      return GestureDetector(
+                        onTap: () {
+                          if (isEventSoldOut) {
+                            _showSoldOutPopup(event.title);
+                          } else {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)),
+                            );
+                          }
+                        },
+                        child: Stack(
+                          children: [
+                            EventCard(event: event), // 🎟️ tu tarjeta original
+
+                            // 🔥 Overlay "SOLD OUT"
+                            if (isEventSoldOut)
+                              Positioned.fill(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.55),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Center(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.redAccent.withOpacity(0.9),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Text(
+                                        "SOLD OUT",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 2,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+
                     },
                   ),
                 ),

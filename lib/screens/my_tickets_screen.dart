@@ -8,7 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:flutter/rendering.dart';
-import '../theme_sync.dart'; // 👈 Importante para el tema global
+import '../theme_sync.dart';
 
 class MyTicketsScreen extends StatefulWidget {
   const MyTicketsScreen({super.key});
@@ -23,7 +23,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = ThemeSync.currentTheme; // 👈 usamos el tema sincronizado
+    final theme = ThemeSync.currentTheme;
     ThemeSync.applyThemeSilently(ThemeSync.isDarkMode);
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
@@ -53,6 +53,39 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
         body: Column(
           children: [
             const SizedBox(height: 8),
+
+            // 🔥 BARRA DE AVISO OFFLINE
+            StreamBuilder(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(uid)
+                  .collection('tickets')
+                  .snapshots(includeMetadataChanges: true),
+              builder: (context, snapshot) {
+                final offline = snapshot.hasData &&
+                    snapshot.data!.metadata.isFromCache &&
+                    !snapshot.data!.metadata.hasPendingWrites;
+
+                if (offline) {
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    color: Colors.orange.withOpacity(0.2),
+                    child: Center(
+                      child: Text(
+                        "Modo sin conexión: solo puedes ver tus entradas",
+                        style: TextStyle(
+                          color: Colors.orange.shade800,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: SegmentedButton<bool>(
@@ -86,29 +119,22 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                     .doc(uid)
                     .collection('tickets')
                     .orderBy('eventDateTime', descending: !_showUpcoming)
-                    .snapshots(),
+                    .snapshots(includeMetadataChanges: true), // 🔥 importante
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(
-                      child: CircularProgressIndicator(
-                        color: theme.colorScheme.primary,
-                      ),
-                    );
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  if (!snapshot.hasData) {
                     return Center(
                       child: Text(
-                        "Aún no tienes entradas.",
+                        "Cargando...",
                         style: TextStyle(color: theme.colorScheme.onSurface),
                       ),
                     );
                   }
 
+                  final isFromCache = snapshot.data!.metadata.isFromCache;
+
                   final now = DateTime.now();
                   final allTickets = snapshot.data!.docs;
 
-                  // 🧠 Filtrar próximas/pasadas
                   final filteredTickets = allTickets.where((doc) {
                     final data = doc.data() as Map<String, dynamic>;
                     final timestamp = data['eventDateTime'];
@@ -130,8 +156,8 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                     );
                   }
 
-                  // 📦 Agrupar por evento y zona
-                  final Map<String, Map<String, List<QueryDocumentSnapshot>>> groupedTickets = {};
+                  final Map<String, Map<String, List<QueryDocumentSnapshot>>>
+                      groupedTickets = {};
 
                   for (final doc in filteredTickets) {
                     final data = doc.data() as Map<String, dynamic>;
@@ -152,8 +178,8 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                       final eventTitle = eventTitles[eventIndex];
                       final zonesMap = groupedTickets[eventTitle]!;
 
-                      // Info del primer ticket
-                      final firstTicket = zonesMap.values.first.first.data() as Map<String, dynamic>;
+                      final firstTicket =
+                          zonesMap.values.first.first.data() as Map<String, dynamic>;
                       final date = firstTicket['date'] ?? '';
                       final time = firstTicket['time'] ?? '';
 
@@ -175,7 +201,6 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                           ),
                           const SizedBox(height: 8),
 
-                          // 🔹 Zonas del evento
                           ...zonesMap.entries.map((entry) {
                             final zoneName = entry.key;
                             final tickets = entry.value;
@@ -193,17 +218,25 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                                 ),
                                 const SizedBox(height: 6),
 
-                                // 🎟️ Carrusel horizontal
                                 SizedBox(
                                   height: 280,
                                   child: ListView.builder(
                                     scrollDirection: Axis.horizontal,
                                     itemCount: tickets.length,
                                     itemBuilder: (context, i) {
-                                      final data = tickets[i].data() as Map<String, dynamic>;
-                                      final qrCode = data['qrCode'] ?? data['qrData'] ?? 'SIN_QR';
+                                      final data =
+                                          tickets[i].data() as Map<String, dynamic>;
+                                      final qrCode =
+                                          data['qrCode'] ?? data['qrData'] ?? 'SIN_QR';
                                       final seat = data['seat'] ?? '';
+
                                       _qrKeys[qrCode] = GlobalKey();
+
+                                      // 🔥 Guardar QR local
+                                      WidgetsBinding.instance
+                                          .addPostFrameCallback((_) {
+                                        _saveQrToLocal(qrCode);
+                                      });
 
                                       return Container(
                                         width: 230,
@@ -217,44 +250,73 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                                           child: Padding(
                                             padding: const EdgeInsets.all(14),
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.center,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
                                               children: [
                                                 Text(
                                                   "Entrada ${i + 1}",
-                                                  style: theme.textTheme.titleSmall?.copyWith(
+                                                  style: theme.textTheme.titleSmall
+                                                      ?.copyWith(
                                                     fontWeight: FontWeight.bold,
-                                                    color: theme.colorScheme.onSurface,
+                                                    color: theme
+                                                        .colorScheme.onSurface,
                                                   ),
                                                 ),
                                                 if (seat.isNotEmpty)
                                                   Text(
                                                     "Asiento: $seat",
-                                                    style: theme.textTheme.bodySmall?.copyWith(
-                                                      color: theme.colorScheme.onSurface.withOpacity(0.8),
+                                                    style: theme
+                                                        .textTheme.bodySmall
+                                                        ?.copyWith(
+                                                      color: theme.colorScheme.onSurface
+                                                          .withOpacity(0.8),
                                                     ),
                                                   ),
                                                 const SizedBox(height: 10),
-                                                RepaintBoundary(
-                                                  key: _qrKeys[qrCode],
-                                                  child: QrImageView(
-                                                    data: qrCode,
-                                                    version: QrVersions.auto,
-                                                    size: 150,
-                                                    backgroundColor: Colors.white,
-                                                  ),
+
+                                                // 🔥 QR desde local o desde generador
+                                                FutureBuilder<File?>(
+                                                  future: _loadLocalQr(qrCode),
+                                                  builder: (context, snap) {
+                                                    if (snap.hasData) {
+                                                      return Image.file(
+                                                        snap.data!,
+                                                        width: 150,
+                                                        height: 150,
+                                                      );
+                                                    }
+
+                                                    return RepaintBoundary(
+                                                      key: _qrKeys[qrCode],
+                                                      child: QrImageView(
+                                                        data: qrCode,
+                                                        version:
+                                                            QrVersions.auto,
+                                                        size: 150,
+                                                        backgroundColor:
+                                                            Colors.white,
+                                                      ),
+                                                    );
+                                                  },
                                                 ),
+
                                                 const SizedBox(height: 10),
+
                                                 OutlinedButton.icon(
                                                   onPressed: () async {
-                                                    await _shareQrImage(qrCode, eventTitle);
+                                                    await _shareQrImage(
+                                                        qrCode, eventTitle);
                                                   },
-                                                  icon: const Icon(Icons.share, size: 18),
+                                                  icon: const Icon(Icons.share,
+                                                      size: 18),
                                                   label: const Text("Compartir"),
-                                                  style: OutlinedButton.styleFrom(
-                                                    foregroundColor: theme.colorScheme.primary,
+                                                  style:
+                                                      OutlinedButton.styleFrom(
+                                                    foregroundColor: theme
+                                                        .colorScheme.primary,
                                                     side: BorderSide(
-                                                      color: theme.colorScheme.primary,
-                                                    ),
+                                                        color: theme.colorScheme
+                                                            .primary),
                                                   ),
                                                 ),
                                               ],
@@ -283,13 +345,43 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
     );
   }
 
-  // 📸 Captura y comparte QR
+  // 🔥 GUARDAR QR LOCAL
+  Future<void> _saveQrToLocal(String qrData) async {
+    try {
+      if (!_qrKeys.containsKey(qrData)) return;
+      final boundary =
+          _qrKeys[qrData]!.currentContext!.findRenderObject()
+              as RenderRepaintBoundary;
+
+      final image = await boundary.toImage(pixelRatio: 2.0);
+      final byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      final pngBytes = byteData!.buffer.asUint8List();
+
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File("${dir.path}/qr_$qrData.png");
+
+      if (!file.existsSync()) {
+        await file.writeAsBytes(pngBytes, flush: true);
+      }
+    } catch (_) {}
+  }
+
+  // 🔥 CARGAR QR GUARDADO
+  Future<File?> _loadLocalQr(String qrData) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File("${dir.path}/qr_$qrData.png");
+    return file.existsSync() ? file : null;
+  }
+
+  // 📸 Compartir QR
   Future<void> _shareQrImage(String qrCode, String eventTitle) async {
     try {
       final boundary = _qrKeys[qrCode]!.currentContext!.findRenderObject()
           as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
       final Uint8List pngBytes = byteData!.buffer.asUint8List();
 
       final directory = await getTemporaryDirectory();

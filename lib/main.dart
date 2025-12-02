@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:proyecto_estadio/services/connection_guard.dart';
 import 'firebase_options.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -20,6 +21,7 @@ class ThemeController extends ChangeNotifier {
     notifyListeners();
   }
 }
+final RouteObserver<ModalRoute> routeObserver = RouteObserver<ModalRoute>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,14 +29,7 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  try {
-    debugPrint('🗺️ Intentando inicializar Google Maps...');
-    final mapsImplementation = GoogleMapsFlutterPlatform.instance;
-    debugPrint('✅ Google Maps cargado correctamente (${mapsImplementation.runtimeType})');
-  } catch (e) {
-    debugPrint('❌ Error al inicializar Google Maps: $e');
-  }
-
+  // 👇 Ahora solo corre MyApp
   runApp(const MyApp());
 }
 
@@ -60,19 +55,28 @@ class MyApp extends StatelessWidget {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Proyecto Estadio',
+      navigatorObservers: [routeObserver],
       debugShowCheckedModeBanner: false,
+
+      // 👇 SE AGREGA AQUÍ EL ConnectionGuard que envuelve TODO el contenido
       builder: (context, child) {
-        return Directionality(
-          textDirection: TextDirection.ltr,
-          child: child ?? const SizedBox(),
+        return ConnectionGuard(
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: child ?? const SizedBox(),
+          ),
         );
       },
+
+
       theme: lightTheme,
       darkTheme: darkTheme,
       themeMode: ThemeMode.light,
+
       routes: {
         '/cart_screen': (context) => const CartScreen(),
         '/my_tickets_screen': (context) => const MyTicketsScreen(),
@@ -85,11 +89,10 @@ class MyApp extends StatelessWidget {
       ],
 
       supportedLocales: const [
-        Locale('es', 'ES'), // español
-        Locale('en', 'US'), // inglés (por si acaso)
+        Locale('es', 'ES'),
+        Locale('en', 'US'),
       ],
 
-      // 👇 AQUÍ EL CAMBIO: ahora verificamos tipo de usuario antes de decidir pantalla inicial
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
@@ -128,6 +131,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
+
 // 🌞 TEMA CLARO
 final ThemeData lightTheme = ThemeData(
   brightness: Brightness.light,
@@ -159,7 +163,6 @@ final ThemeData lightTheme = ThemeData(
       ),
     ),
   ),
-  // 👇 corregido: ahora usa CardThemeData
   cardTheme: const CardThemeData(
     color: Color(0xFFF2F2F2),
     elevation: 3,
@@ -181,7 +184,6 @@ final ThemeData lightTheme = ThemeData(
     contentTextStyle: TextStyle(color: Colors.white),
   ),
 );
-
 
 // 🌙 TEMA OSCURO
 final ThemeData darkTheme = ThemeData(
@@ -214,7 +216,6 @@ final ThemeData darkTheme = ThemeData(
       ),
     ),
   ),
-  // 👇 corregido: ahora usa CardThemeData
   cardTheme: const CardThemeData(
     color: Color(0xFF182230),
     elevation: 3,

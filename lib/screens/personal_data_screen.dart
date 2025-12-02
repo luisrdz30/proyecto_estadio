@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme_sync.dart';
 
 class PersonalDataScreen extends StatefulWidget {
@@ -24,8 +25,6 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
 
   bool _loading = false;
   String _userType = 'normal';
-
-  // 🆕 Nueva variable para manejar la foto de perfil
   String _selectedProfile = 'perfil1.png';
 
   @override
@@ -34,15 +33,28 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
     _loadUserData();
   }
 
+  // ----------------------------------------------------------------------
+  // 🔥 Cargar datos + sincronizar correo si cambió
+  // ----------------------------------------------------------------------
   Future<void> _loadUserData() async {
     final docRef = _db
         .collection('users')
         .doc(user.uid)
         .collection('personalData')
         .doc('info');
+
     final snapshot = await docRef.get();
 
-    _emailController.text = user.email ?? '';
+    final authEmail = user.email ?? '';
+    final storedEmail = snapshot.data()?['email'] ?? '';
+
+    // Si Firebase Auth actualizó correo → sincronizar Firestore
+    if (storedEmail != authEmail && authEmail.isNotEmpty) {
+      await docRef.update({'email': authEmail});
+      await _db.collection('users').doc(user.uid).update({'email': authEmail});
+    }
+
+    _emailController.text = authEmail;
 
     if (snapshot.exists) {
       final data = snapshot.data()!;
@@ -51,8 +63,6 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
       _phoneController.text = data['phone'] ?? '';
       _addressController.text = data['address'] ?? '';
       _userType = data['userType'] ?? 'normal';
-
-      // 🆕 Leer imagen de perfil si existe
       _selectedProfile = data['profileImage'] ?? 'perfil1.png';
     } else {
       await docRef.set({
@@ -60,14 +70,13 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
         'idNumber': '',
         'phone': '',
         'address': '',
-        'email': user.email ?? '',
+        'email': authEmail,
         'userType': 'normal',
         'profileImage': _selectedProfile,
         'createdAt': Timestamp.now(),
       });
     }
 
-    // Username desde raíz
     final userDoc = await _db.collection('users').doc(user.uid).get();
     if (userDoc.exists && userDoc.data()?['username'] != null) {
       _usernameController.text = userDoc['username'];
@@ -76,6 +85,9 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
     setState(() {});
   }
 
+  // ----------------------------------------------------------------------
+  // 🔥 Popup simple reutilizable
+  // ----------------------------------------------------------------------
   Future<void> _showPopup({
     required String title,
     required String message,
@@ -119,6 +131,9 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
     );
   }
 
+  // ----------------------------------------------------------------------
+  // 🔥 Guardar información personal
+  // ----------------------------------------------------------------------
   Future<void> _saveUserData() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
@@ -136,7 +151,7 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
       'address': _addressController.text.trim(),
       'email': _emailController.text.trim(),
       'userType': _userType,
-      'profileImage': _selectedProfile, // 🆕 Guardar foto
+      'profileImage': _selectedProfile,
       'updatedAt': Timestamp.now(),
     });
 
@@ -152,13 +167,66 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
     );
   }
 
+  // ----------------------------------------------------------------------
+  // 🔥 Restablecer contraseña con POPUP PRO
+  // ----------------------------------------------------------------------
   Future<void> _resetPassword() async {
+    final theme = ThemeSync.currentTheme;
+
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: user.email!);
-      await _showPopup(
-        title: "📧 Correo enviado",
-        message:
-            "Se ha enviado un correo de restablecimiento a ${user.email}. Revisa tu bandeja de entrada.",
+
+      await showDialog(
+        context: context,
+        builder: (context) => Theme(
+          data: theme,
+          child: AlertDialog(
+            backgroundColor: theme.colorScheme.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Restablecer \ncontraseña",
+                  style: TextStyle(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(Icons.close, color: Colors.grey),
+                )
+              ],
+            ),
+            content: Text(
+              "Hemos enviado un correo a:\n\n${user.email}\n\nAbre el mensaje para restablecer tu contraseña.",
+              style: TextStyle(color: theme.colorScheme.onSurface),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  final Uri uri = Uri(scheme: 'mailto', path: user.email);
+                  try {
+                    await launchUrl(uri);
+                  } catch (_) {}
+                  Navigator.pop(context);
+                },
+                child: Text(
+                  "Abrir correo",
+                  style: TextStyle(color: theme.colorScheme.primary),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  "OK",
+                  style: TextStyle(color: theme.colorScheme.primary),
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     } catch (_) {
       await _showPopup(
@@ -169,6 +237,140 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
     }
   }
 
+
+  // ----------------------------------------------------------------------
+  // 🔥 Cambiar correo con POPUP PRO + botón Abrir correo
+  // ----------------------------------------------------------------------
+  Future<void> _changeEmail() async {
+    final theme = ThemeSync.currentTheme;
+    final TextEditingController newEmailController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => Theme(
+        data: theme,
+        child: AlertDialog(
+          backgroundColor: theme.colorScheme.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Cambiar correo",
+                style: TextStyle(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: const Icon(Icons.close, color: Colors.grey),
+              ),
+            ],
+          ),
+          content: TextField(
+            controller: newEmailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: "Nuevo correo electrónico",
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                "Cancelar",
+                style: TextStyle(color: theme.colorScheme.primary),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                final newEmail = newEmailController.text.trim();
+                if (newEmail.isEmpty) return;
+
+                try {
+                  await user.verifyBeforeUpdateEmail(newEmail);
+                  Navigator.pop(context);
+
+                  // 📩 Mostrar popup estilizado indicando verificación
+                  await showDialog(
+                    context: context,
+                    builder: (context) => Theme(
+                      data: theme,
+                      child: AlertDialog(
+                        backgroundColor: theme.colorScheme.surface,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                        title: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Verifica tu correo",
+                              style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => Navigator.pop(context),
+                              child: const Icon(Icons.close, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                        content: Text(
+                          "Tu correo ha sido cambiado a:\n\n$newEmail\n\nPara completar el proceso, abre el enlace enviado a tu correo.",
+                          style: TextStyle(color: theme.colorScheme.onSurface),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () async {
+                              final Uri uri = Uri(scheme: 'mailto', path: newEmail);
+                              try {
+                                await launchUrl(uri);
+                              } catch (_) {}
+                              Navigator.pop(context);
+                            },
+                            child: Text(
+                              "Abrir correo",
+                              style: TextStyle(color: theme.colorScheme.primary),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              "OK",
+                              style: TextStyle(color: theme.colorScheme.primary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                } catch (e) {
+                  Navigator.pop(context);
+                  await _showPopup(
+                    title: "Error",
+                    message:
+                        "No se pudo actualizar el correo. Puede que necesites iniciar sesión nuevamente.",
+                    isError: true,
+                  );
+                }
+              },
+              child: Text(
+                "Guardar",
+                style: TextStyle(color: theme.colorScheme.primary),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  // ----------------------------------------------------------------------
+  // UI
+  // ----------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final theme = ThemeSync.currentTheme;
@@ -189,7 +391,6 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
             key: _formKey,
             child: ListView(
               children: [
-                // 🆕 Selector de foto (encima del username)
                 Center(
                   child: Column(
                     children: [
@@ -222,7 +423,8 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                               },
                               child: Container(
                                 margin: const EdgeInsets.symmetric(horizontal: 8),
-                                padding: selected ? EdgeInsets.all(3) : EdgeInsets.zero,
+                                padding:
+                                    selected ? const EdgeInsets.all(3) : EdgeInsets.zero,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: selected
@@ -338,12 +540,24 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 20),
 
+                // Restablecer contraseña
                 TextButton.icon(
                   icon: const Icon(Icons.lock_reset),
-                  label: const Text('Restablecer contraseña'),
+                  label: const Text('Restablecer \ncontraseña'),
                   onPressed: _resetPassword,
+                  style: TextButton.styleFrom(
+                    foregroundColor: theme.colorScheme.primary,
+                  ),
+                ),
+
+                // Cambiar correo
+                TextButton.icon(
+                  icon: const Icon(Icons.email_outlined),
+                  label: const Text('Cambiar correo electrónico'),
+                  onPressed: _changeEmail,
                   style: TextButton.styleFrom(
                     foregroundColor: theme.colorScheme.primary,
                   ),

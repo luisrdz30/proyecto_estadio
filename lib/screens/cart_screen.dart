@@ -5,6 +5,8 @@ import 'package:uuid/uuid.dart';
 import '../services/cart_service.dart';
 import 'personal_data_screen.dart';
 import '../theme_sync.dart';
+import '../main.dart'; // donde está routeObserver
+
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -13,10 +15,34 @@ class CartScreen extends StatefulWidget {
   State<CartScreen> createState() => _CartScreenState();
 }
 
-class _CartScreenState extends State<CartScreen> {
+class _CartScreenState extends State<CartScreen> with RouteAware {
   final CartService _cartService = CartService();
   final _uuid = const Uuid();
   bool _wantsInvoice = false;
+  String? _userName;
+  String? _userIdNumber;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo(); // 🔥 cargamos nombre/cedula apenas entra
+  }
+ @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+@override
+  void didPopNext() {
+    // 👈 Esto corre SIEMPRE al regresar a CartScreen
+    _loadUserInfo();
+    setState(() {});
+  }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -286,16 +312,99 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                       const SizedBox(height: 10),
 
-                      CheckboxListTile(
-                        value: _wantsInvoice,
-                        onChanged: (v) =>
-                            setState(() => _wantsInvoice = v ?? false),
-                        title: Text(
-                          "¿Desea factura?",
-                          style:
-                              TextStyle(color: theme.colorScheme.onSurface),
+                      // ------------------------------------
+                      // 🔥 BLOQUE ANIMADO DE FACTURA
+                      // ------------------------------------
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CheckboxListTile(
+                              value: _wantsInvoice,
+                              onChanged: (v) => setState(() => _wantsInvoice = v ?? false),
+                              title: Text(
+                                "¿Desea factura?",
+                                style: TextStyle(color: theme.colorScheme.onSurface),
+                              ),
+                              controlAffinity: ListTileControlAffinity.leading,
+                            ),
+
+                            // 👇 Mostrar datos personales con animación si quiere factura
+                            if (_wantsInvoice)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                margin: const EdgeInsets.only(left: 8, right: 8, bottom: 12),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surface.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: theme.colorScheme.primary.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          "Datos para la factura:",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: theme.colorScheme.primary,
+                                          ),
+                                        ),
+
+                                        // 🔄 Botón de recargar
+                                        IconButton(
+                                          tooltip: "Actualizar datos",
+                                          icon: Icon(Icons.refresh, color: theme.colorScheme.primary),
+                                          onPressed: () async {
+                                            await _loadUserInfo();
+                                            
+                                          },
+                                        ),
+                                      ],
+                                    ),
+
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      "Nombre: ${_userName ?? 'No registrado'}",
+                                      style: TextStyle(color: theme.colorScheme.onSurface),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "Cédula: ${_userIdNumber ?? 'No registrada'}",
+                                      style: TextStyle(color: theme.colorScheme.onSurface),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    TextButton(
+                                      onPressed: () async {
+                                        await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const PersonalDataScreen(),
+                                          ),
+                                        );
+
+                                        // 👇 Recargar datos al volver del formulario
+                                        await _loadUserInfo();
+
+                                        // 👇 Refrescar UI inmediatamente
+                                        if (mounted) setState(() {});
+                                      },
+                                      child: Text(
+                                        "Editar datos personales",
+                                        style: TextStyle(color: theme.colorScheme.primary),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
                         ),
-                        controlAffinity: ListTileControlAffinity.leading,
                       ),
 
                       ElevatedButton.icon(
@@ -320,6 +429,26 @@ class _CartScreenState extends State<CartScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _loadUserInfo() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('personalData')
+        .doc('info')
+        .get();
+
+    if (doc.exists) {
+      final data = doc.data()!;
+      setState(() {
+        _userName = data['name'] ?? '';
+        _userIdNumber = data['idNumber'] ?? '';
+      });
+    }
   }
 
   /// 🔹 Actualizar cantidad (+ o -)
@@ -360,6 +489,22 @@ class _CartScreenState extends State<CartScreen> {
       await cartRef.update({'zones': zones, 'total': total});
     }
   }
+void _showCapacityErrorPopup(BuildContext context, String error) {
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text("No se pudo completar la compra"),
+      content: Text(error),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Entendido"),
+        ),
+      ],
+    ),
+  );
+}
+
 
 void _showMandatoryInvoicePopup(BuildContext context) {
   showDialog(
@@ -425,6 +570,69 @@ void _showMandatoryInvoicePopup(BuildContext context) {
         );
         return;
       }
+    }
+    final cartSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('cart')
+        .get();
+
+    try {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+
+        for (final doc in cartSnapshot.docs) {
+          final data = doc.data();
+          final eventTitle = data['title'];
+          final zones = (data['zones'] as List<dynamic>?) ?? [];
+
+          // obtener el evento por título
+          final eventQuery = await FirebaseFirestore.instance
+              .collection('events')
+              .where('title', isEqualTo: eventTitle)
+              .limit(1)
+              .get();
+
+          if (eventQuery.docs.isEmpty) {
+            throw Exception("El evento no existe.");
+          }
+
+          final eventRef = eventQuery.docs.first.reference;
+          final eventSnap = await transaction.get(eventRef);
+          final eventData = eventSnap.data() as Map<String, dynamic>;
+
+          final eventZones = (eventData['zones'] as List<dynamic>)
+              .map((z) => Map<String, dynamic>.from(z))
+              .toList();
+
+          // recorrer las zonas que el usuario quiere comprar
+          for (final zone in zones) {
+            final zoneName = zone['name'];
+            final countToBuy = zone['count'];
+
+            final zoneInEvent = eventZones.firstWhere(
+              (z) => z['name'] == zoneName,
+              orElse: () => throw Exception("La localidad $zoneName no existe."),
+            );
+
+            final currentCapacity = (zoneInEvent['capacity'] ?? 0).toInt();
+
+            // 🚨 no hay suficientes cupos
+            if (currentCapacity < countToBuy) {
+              throw Exception(
+                  "La localidad $zoneName ya no tiene suficientes cupos disponibles.");
+            }
+
+            // 🔥 restar capacidad
+            zoneInEvent['capacity'] = currentCapacity - countToBuy;
+          }
+
+          // 🔥 guardar nueva capacidad en Firestore
+          transaction.update(eventRef, {'zones': eventZones});
+        }
+      });
+    } catch (e) {
+      _showCapacityErrorPopup(context, e.toString());
+      return;
     }
 
     // ✅ Generar tickets y factura (aunque no haya solicitado)

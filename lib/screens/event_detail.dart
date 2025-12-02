@@ -40,6 +40,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
     return sum;
   }
+
   Future<void> _toggleFavorite() async {
     if (_isFavorite) {
       await _favoritesService.removeFavorite(widget.event.title);
@@ -63,10 +64,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       builder: (context) => Theme(
         data: theme,
         child: Dialog(
-          insetPadding:
-              const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: AnimatedScale(
@@ -127,7 +126,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = ThemeSync.currentTheme; // 👈 usa el tema global sincronizado
+    final theme = ThemeSync.currentTheme;
     ThemeSync.applyThemeSilently(ThemeSync.isDarkMode);
 
     final event = widget.event;
@@ -164,7 +163,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🖼 Imagen principal
+              // Imagen
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Builder(
@@ -188,8 +187,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           height: 220,
                           color: theme.colorScheme.surfaceContainerHighest
                               .withOpacity(0.2),
-                          child: const Center(
-                              child: CircularProgressIndicator()),
+                          child: const Center(child: CircularProgressIndicator()),
                         );
                       },
                       errorBuilder: (_, __, ___) => Image.asset(
@@ -204,7 +202,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 🏷️ Título
+              // Título
               Text(
                 event.title,
                 style: theme.textTheme.headlineSmall?.copyWith(
@@ -221,38 +219,32 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "📅 Fecha:  ${event.date}",
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
-                      color: theme.colorScheme.onSurface.withOpacity(0.85),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
 
-                  Text(
-                    "⏰ Hora:  ${event.time}",
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
-                      color: theme.colorScheme.onSurface.withOpacity(0.85),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-
-                  Text(
-                    "⏳ Duración:  ${event.duration}",
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
-                      color: theme.colorScheme.onSurface.withOpacity(0.85),
-                    ),
-                  ),
-                ],
+              Text(
+                "📅 Fecha:  ${event.date}",
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w500,
+                  color: theme.colorScheme.onSurface.withOpacity(0.85),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "⏰ Hora:  ${event.time}",
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w500,
+                  color: theme.colorScheme.onSurface.withOpacity(0.85),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "⏳ Duración:  ${event.duration}",
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w500,
+                  color: theme.colorScheme.onSurface.withOpacity(0.85),
+                ),
               ),
 
               const SizedBox(height: 16),
@@ -264,6 +256,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   height: 1.5,
                 ),
               ),
+
               const SizedBox(height: 20),
 
               ClipRRect(
@@ -274,6 +267,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   fit: BoxFit.cover,
                 ),
               ),
+
               const SizedBox(height: 24),
 
               Text(
@@ -285,9 +279,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
               const SizedBox(height: 10),
 
-              // 🔹 Zonas
+              // Zonas
               ...event.zones.map((zone) {
                 final count = ticketCounts[zone.name] ?? 0;
+
                 return Card(
                   color: theme.colorScheme.surface,
                   elevation: 2,
@@ -317,17 +312,26 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         ),
                       ],
                     ),
+
+                    // 🔥 SOLD OUT o DISPONIBLES
                     subtitle: Text(
-                      "Capacidad: ${zone.capacity} personas",
+                      zone.capacity <= 0
+                          ? "Sold Out"
+                          : "Disponibles: ${zone.capacity}",
                       style: TextStyle(
-                        color: theme.colorScheme.onSurface.withOpacity(0.8),
+                        fontWeight: FontWeight.w600,
+                        color: zone.capacity <= 0
+                            ? Colors.redAccent
+                            : theme.colorScheme.onSurface.withOpacity(0.8),
                       ),
                     ),
+
                     trailing: SizedBox(
                       width: 120,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
+                          // Botón "-"
                           IconButton(
                             onPressed: count > 0
                                 ? () => setState(() =>
@@ -338,10 +342,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               size: 20,
                               color: count > 0
                                   ? theme.colorScheme.error
-                                  : theme.colorScheme.onSurface
-                                      .withOpacity(0.3),
+                                  : theme.colorScheme.onSurface.withOpacity(0.3),
                             ),
                           ),
+
                           Text(
                             "$count",
                             style: TextStyle(
@@ -349,15 +353,22 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               color: theme.colorScheme.onSurface,
                             ),
                           ),
+
+                          // Botón "+"
                           IconButton(
-                            onPressed: () {
-                              setState(() =>
-                                  ticketCounts[zone.name] = count + 1);
-                            },
+                            onPressed: zone.capacity <= 0 || count >= zone.capacity
+                                ? null
+                                : () {
+                                    setState(() {
+                                      ticketCounts[zone.name] = count + 1;
+                                    });
+                                  },
                             icon: Icon(
                               Icons.add_circle_outline,
                               size: 20,
-                              color: theme.colorScheme.primary,
+                              color: (zone.capacity <= 0 || count >= zone.capacity)
+                                  ? theme.colorScheme.onSurface.withOpacity(0.3)
+                                  : theme.colorScheme.primary,
                             ),
                           ),
                         ],
@@ -369,7 +380,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
               const SizedBox(height: 20),
 
-              // 💰 Total
+              // Total a pagar
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -398,16 +409,16 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 20),
 
-              // 🛒 Botón Agregar al carrito
+              // Botón carrito
               OutlinedButton.icon(
                 onPressed: () async {
                   if (total <= 0) {
                     _showPopup(
                       title: "Atención",
-                      message:
-                          "Debes seleccionar al menos una entrada 🎟️",
+                      message: "Debes seleccionar al menos una entrada 🎟️",
                       icon: Icons.info_outline,
                       color: Colors.orangeAccent,
                     );
@@ -415,8 +426,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     await _cartService.addToCart(widget.event, ticketCounts);
                     _showPopup(
                       title: "Añadido",
-                      message:
-                          "${widget.event.title} fue añadido al carrito 🛒",
+                      message: "${widget.event.title} fue añadido al carrito 🛒",
                       icon: Icons.shopping_cart,
                       color: Colors.green,
                     );
