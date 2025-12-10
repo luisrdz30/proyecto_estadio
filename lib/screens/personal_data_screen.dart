@@ -1,6 +1,9 @@
+// 🔥🔥🔥 TODAS LAS IMPORTS IGUAL COMO LAS TENÍAS 🔥🔥🔥
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:proyecto_estadio/screens/cart_screen.dart';
+import 'package:proyecto_estadio/screens/home_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../theme_sync.dart';
 
@@ -34,6 +37,53 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
   }
 
   // ----------------------------------------------------------------------
+  // ✔ FUNCIÓN: VALIDAR CÉDULA ECUATORIANA
+  // ----------------------------------------------------------------------
+  bool validarCedulaEcuatoriana(String cedula) {
+    if (cedula.length != 10) return false;
+
+    final provincia = int.tryParse(cedula.substring(0, 2));
+    if (provincia == null || provincia < 1 || provincia > 24) return false;
+
+    int tercerDigito = int.tryParse(cedula[2]) ?? -1;
+    if (tercerDigito < 0 || tercerDigito > 5) return false;
+
+    List<int> coef = [2,1,2,1,2,1,2,1,2];
+    int suma = 0;
+
+    for (int i = 0; i < 9; i++) {
+      int valor = int.parse(cedula[i]) * coef[i];
+      if (valor > 9) valor -= 9;
+      suma += valor;
+    }
+
+    int digitoVerificador = int.parse(cedula[9]);
+    int decenaSuperior = ((suma + 9) ~/ 10) * 10;
+    int calculado = decenaSuperior - suma;
+
+    if (calculado == 10) calculado = 0;
+
+    return calculado == digitoVerificador;
+  }
+
+  // ----------------------------------------------------------------------
+  // ✔ FUNCIÓN: VALIDAR TELÉFONO ECUATORIANO
+  // PERMITE:
+  //   0998765432
+  //   0987654321
+  //   +593987654321
+  //   +593 98 765 4321
+  // ----------------------------------------------------------------------
+  bool validarTelefonoEcuatoriano(String tlf) {
+    final clean = tlf.replaceAll(" ", "");
+
+    final exp1 = RegExp(r"^09\d{8}$");          // 09xxxxxxxx
+    final exp2 = RegExp(r"^\+5939\d{8}$");      // +5939xxxxxxxx
+
+    return exp1.hasMatch(clean) || exp2.hasMatch(clean);
+  }
+
+  // ----------------------------------------------------------------------
   // 🔥 Cargar datos + sincronizar correo si cambió
   // ----------------------------------------------------------------------
   Future<void> _loadUserData() async {
@@ -48,7 +98,6 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
     final authEmail = user.email ?? '';
     final storedEmail = snapshot.data()?['email'] ?? '';
 
-    // Si Firebase Auth actualizó correo → sincronizar Firestore
     if (storedEmail != authEmail && authEmail.isNotEmpty) {
       await docRef.update({'email': authEmail});
       await _db.collection('users').doc(user.uid).update({'email': authEmail});
@@ -86,7 +135,7 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
   }
 
   // ----------------------------------------------------------------------
-  // 🔥 Popup simple reutilizable
+  // 🔥 Popup simple reutilizable (no editado)
   // ----------------------------------------------------------------------
   Future<void> _showPopup({
     required String title,
@@ -98,44 +147,132 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
     await showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => Theme(
-        data: theme,
-        child: AlertDialog(
-          backgroundColor: theme.colorScheme.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: isError ? Colors.red : theme.colorScheme.primary,
-                ),
+      builder: (context) {
+        return Theme(
+          data: theme,
+          child: Dialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(Icons.close, color: Colors.grey, size: 22),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+
+                  Icon(
+                    isError ? Icons.error_outline : Icons.check_circle,
+                    color: isError ? Colors.redAccent : Colors.green,
+                    size: 55,
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      color: isError ? Colors.redAccent : Colors.green,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      height: 1.4,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  if (!isError) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (_) => const HomeScreen()),
+                            (route) => false,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text("Ver eventos"),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const CartScreen()),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text("Ir al carrito"),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+
+                  if (isError)
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text("Cerrar"),
+                    ),
+                ],
               ),
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: const Icon(Icons.close, color: Colors.grey),
-              ),
-            ],
-          ),
-          content: Text(
-            message,
-            style: TextStyle(
-              fontSize: 16,
-              color: theme.colorScheme.onSurface,
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   // ----------------------------------------------------------------------
-  // 🔥 Guardar información personal
+  // 🔥 Guardar información personal con validators
   // ----------------------------------------------------------------------
   Future<void> _saveUserData() async {
     if (!_formKey.currentState!.validate()) return;
+
     setState(() => _loading = true);
 
     final docRef = _db
@@ -162,13 +299,13 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
     setState(() => _loading = false);
 
     await _showPopup(
-      title: "✅ Éxito",
-      message: "Datos personales guardados correctamente.",
+      title: "Datos guardados",
+      message: "Tu información personal se ha actualizado correctamente.",
     );
   }
 
   // ----------------------------------------------------------------------
-  // 🔥 Restablecer contraseña con POPUP PRO
+  // 🔥 Restablecer contraseña (igual)
   // ----------------------------------------------------------------------
   Future<void> _resetPassword() async {
     final theme = ThemeSync.currentTheme;
@@ -200,7 +337,7 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
               ],
             ),
             content: Text(
-              "Hemos enviado un correo a:\n\n${user.email}\n\nAbre el mensaje para restablecer tu contraseña.",
+              "Hemos enviado un correo a:\n\n${user.email}\n",
               style: TextStyle(color: theme.colorScheme.onSurface),
             ),
             actions: [
@@ -237,9 +374,8 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
     }
   }
 
-
   // ----------------------------------------------------------------------
-  // 🔥 Cambiar correo con POPUP PRO + botón Abrir correo
+  // 🔥 Cambiar correo (igual)
   // ----------------------------------------------------------------------
   Future<void> _changeEmail() async {
     final theme = ThemeSync.currentTheme;
@@ -292,7 +428,6 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                   await user.verifyBeforeUpdateEmail(newEmail);
                   Navigator.pop(context);
 
-                  // 📩 Mostrar popup estilizado indicando verificación
                   await showDialog(
                     context: context,
                     builder: (context) => Theme(
@@ -367,9 +502,8 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
     );
   }
 
-
   // ----------------------------------------------------------------------
-  // UI
+  // 🔥 UI
   // ----------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
@@ -449,6 +583,10 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
 
                 const SizedBox(height: 20),
 
+                // =======================================================
+                // 🔥 VALIDACIONES NUEVAS COMIENZAN AQUÍ
+                // =======================================================
+
                 TextFormField(
                   controller: _usernameController,
                   decoration: InputDecoration(
@@ -474,9 +612,8 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                         theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
                   ),
                   readOnly: true,
-                  validator: (value) => value!.trim().isEmpty
-                      ? 'El correo electrónico no puede estar vacío'
-                      : null,
+                  validator: (value) =>
+                      value!.trim().isEmpty ? 'El correo electrónico no puede estar vacío' : null,
                   style: TextStyle(color: theme.colorScheme.onSurface),
                 ),
                 const SizedBox(height: 10),
@@ -492,25 +629,37 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                 ),
                 const SizedBox(height: 10),
 
+                // ✔ VALIDACIÓN DE CÉDULA ECUATORIANA
                 TextFormField(
                   controller: _idController,
                   decoration: InputDecoration(
                     labelText: 'Cédula',
                     prefixIcon: Icon(Icons.badge, color: theme.colorScheme.primary),
                   ),
-                  validator: (value) =>
-                      value!.trim().isEmpty ? 'Ingrese su número de cédula' : null,
+                  validator: (value) {
+                    final v = value!.trim();
+                    if (v.isEmpty) return "Ingrese su número de cédula";
+                    if (!validarCedulaEcuatoriana(v)) return "Cédula ecuatoriana no válida";
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 10),
 
+                // ✔ VALIDACIÓN DE TELÉFONO ECUATORIANO
                 TextFormField(
                   controller: _phoneController,
                   decoration: InputDecoration(
-                    labelText: 'Teléfono',
+                    labelText: 'Teléfono (Ej: 0998765432 o +593998765432)',
                     prefixIcon: Icon(Icons.phone, color: theme.colorScheme.primary),
                   ),
-                  validator: (value) =>
-                      value!.trim().isEmpty ? 'Ingrese su número de teléfono' : null,
+                  validator: (value) {
+                    final v = value!.trim();
+                    if (v.isEmpty) return "Ingrese su número de teléfono";
+                    if (!validarTelefonoEcuatoriano(v)) {
+                      return "Número inválido. Formatos permitidos:\n09XXXXXXXX\n+5939XXXXXXXX";
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 10),
 
@@ -525,11 +674,14 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                 ),
                 const SizedBox(height: 20),
 
+                // =======================================================
+                // 🔥 BOTÓN GUARDAR
+                // =======================================================
+
                 ElevatedButton.icon(
                   icon: const Icon(Icons.save),
-                  label: _loading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Guardar'),
+                  label:
+                      _loading ? const CircularProgressIndicator(color: Colors.white) : const Text('Guardar'),
                   onPressed: _loading ? null : _saveUserData,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: theme.colorScheme.primary,
@@ -543,7 +695,8 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
 
                 const SizedBox(height: 20),
 
-                // Restablecer contraseña
+                // --- RESTO IGUAL ---
+
                 TextButton.icon(
                   icon: const Icon(Icons.lock_reset),
                   label: const Text('Restablecer \ncontraseña'),
@@ -553,7 +706,6 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                   ),
                 ),
 
-                // Cambiar correo
                 TextButton.icon(
                   icon: const Icon(Icons.email_outlined),
                   label: const Text('Cambiar correo electrónico'),

@@ -128,35 +128,29 @@ class _AdminAnuncioFormScreenState extends State<AdminAnuncioFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "Título *",
-                  style: theme.textTheme.titleMedium,
-                ),
+                Text("Título *", style: theme.textTheme.titleMedium),
                 TextFormField(
                   controller: _title,
                   validator: (v) => v!.isEmpty ? "Requerido" : null,
                 ),
                 const SizedBox(height: 20),
 
-                Text(
-                  "Descripción",
-                  style: theme.textTheme.titleMedium,
-                ),
-
+                Text("Descripción", style: theme.textTheme.titleMedium),
                 TextFormField(
                   controller: _description,
                   maxLines: 3,
                 ),
                 const SizedBox(height: 20),
 
-                Text(
-                  " Evento (opcional)",
-                  style: theme.textTheme.titleMedium,
-                ),
+                Text("Evento (opcional)", style: theme.textTheme.titleMedium),
                 const SizedBox(height: 10),
 
+                /// 🔥 SOLO EVENTOS ACTIVOS (isActive == true)
                 FutureBuilder<QuerySnapshot>(
-                  future: FirebaseFirestore.instance.collection("events").get(),
+                  future: FirebaseFirestore.instance
+                      .collection("events")
+                      .where("isActive", isEqualTo: true)
+                      .get(),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
                       return const Padding(
@@ -169,7 +163,7 @@ class _AdminAnuncioFormScreenState extends State<AdminAnuncioFormScreen> {
 
                     if (docs.isEmpty) {
                       return const Text(
-                        "No hay eventos disponibles.",
+                        "No hay eventos activos disponibles.",
                         style: TextStyle(fontStyle: FontStyle.italic),
                       );
                     }
@@ -183,28 +177,46 @@ class _AdminAnuncioFormScreenState extends State<AdminAnuncioFormScreen> {
                       );
                     }).toList();
 
-                    return DropdownButtonFormField<String>(
-                      initialValue: _eventId.text.isNotEmpty ? _eventId.text : null,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        filled: true,
-                        fillColor: theme.colorScheme.surface.withOpacity(0.9),
-                      ),
-                      hint: const Text("Selecciona un evento (opcional)"),
-                      items: items,
-                      onChanged: (value) {
-                        setState(() {
-                          _eventId.text = value ?? "";
-                        });
-                      },
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        DropdownButtonFormField<String>(
+                          initialValue: _eventId.text.isNotEmpty ? _eventId.text : null,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            filled: true,
+                            fillColor: theme.colorScheme.surface.withOpacity(0.9),
+                          ),
+                          hint: const Text("Selecciona un evento (opcional)"),
+                          items: items,
+                          onChanged: (value) {
+                            setState(() {
+                              _eventId.text = value ?? "";
+                            });
+                          },
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        /// 🔥 BOTÓN PARA QUITAR LA SELECCIÓN
+                        if (_eventId.text.isNotEmpty)
+                          TextButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _eventId.text = "";
+                              });
+                            },
+                            icon: const Icon(Icons.clear),
+                            label: const Text("Quitar selección"),
+                          ),
+                      ],
                     );
                   },
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
 
-                Text("Imagen del anuncio",
-                    style: theme.textTheme.titleMedium),
+                Text("Imagen del anuncio", style: theme.textTheme.titleMedium),
                 const SizedBox(height: 10),
 
                 if (_imageFile != null)

@@ -67,44 +67,40 @@ class _CartScreenState extends State<CartScreen> with RouteAware {
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
-          title: const Text("Tu Carrito 🛒"),
+          toolbarHeight: 75, // 🔥 Hace la barra grande como las demás
+          centerTitle: true,
+          title: const Text(
+            "Tu Carrito 🛒",
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+          ),
           backgroundColor: theme.colorScheme.primary,
           foregroundColor: theme.colorScheme.onPrimary,
           actions: [
-            IconButton(
-              tooltip: "Vaciar carrito",
-              icon: const Icon(Icons.delete_forever),
-              onPressed: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text("Vaciar carrito"),
-                    content:
-                        const Text("¿Deseas eliminar todos los productos del carrito?"),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text("Cancelar"),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text("Vaciar"),
-                      ),
-                    ],
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(uid)
+                  .collection('cart')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                final hasItems = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+
+                return IconButton(
+                  tooltip: hasItems ? "Vaciar carrito" : "Carrito vacío",
+                  icon: Icon(
+                    Icons.delete_forever,
+                    color: hasItems ? Colors.white : Colors.white54, // deshabilitado
+                    size: 30,
                   ),
+                  onPressed: hasItems
+                      ? () async => _confirmEmptyCart()   // 🔥 NUEVA FUNCIÓN
+                      : null,
                 );
-                if (confirm == true) {
-                  await _cartService.clearCart();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Carrito vaciado 🧹")),
-                    );
-                  }
-                }
               },
             ),
           ],
         ),
+
         body: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('users')
@@ -431,6 +427,35 @@ class _CartScreenState extends State<CartScreen> with RouteAware {
     );
   }
 
+Future<void> _confirmEmptyCart() async {
+    final theme = ThemeSync.currentTheme;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => Theme(
+        data: theme,
+        child: AlertDialog(
+          title: const Text("Vaciar carrito"),
+          content: const Text("¿Deseas eliminar todos los productos del carrito?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancelar"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Vaciar"),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm == true) {
+      await _cartService.clearCart();
+      _showCartEmptiedPopup(); // 🔥 popup pro
+    }
+  }
   Future<void> _loadUserInfo() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -449,6 +474,69 @@ class _CartScreenState extends State<CartScreen> with RouteAware {
         _userIdNumber = data['idNumber'] ?? '';
       });
     }
+  }
+
+
+  Future<void> _showCartEmptiedPopup() async {
+    final theme = ThemeSync.currentTheme;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return Theme(
+          data: theme,
+          child: Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ❌ cerrar
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(Icons.close, color: Colors.grey),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  Icon(Icons.delete_sweep, color: Colors.redAccent, size: 60),
+
+                  const SizedBox(height: 15),
+
+                  Text(
+                    "Carrito vaciado",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.redAccent,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Text(
+                    "Todos los artículos fueron eliminados correctamente.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   /// 🔹 Actualizar cantidad (+ o -)

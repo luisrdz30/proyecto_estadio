@@ -656,12 +656,26 @@ void _showAnnouncementCarousel(List<Map<String, dynamic>> announcements) {
         ),
 
         appBar: AppBar(
-          title: const Text("Eventos"),
+          toolbarHeight: 75, // 🔥 altura grande centrada
+          iconTheme: const IconThemeData(
+            size: 30,
+            color: Colors.white, // 🔥 menú hamburguesa blanco
+          ),
+          title: const Text(
+            "Eventos",
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: Colors.white, // 🔥 aseguramos blanco
+            ),
+          ),
+          centerTitle: true,
           backgroundColor: theme.colorScheme.primary,
-          foregroundColor: theme.colorScheme.onPrimary,
+
           actions: [
+            // 📅 Ícono calendario
             IconButton(
-              icon: const Icon(Icons.calendar_today),
+              icon: const Icon(Icons.calendar_today, size: 30, color: Colors.white),
               onPressed: () {
                 Navigator.push(
                   context,
@@ -669,15 +683,18 @@ void _showAnnouncementCarousel(List<Map<String, dynamic>> announcements) {
                 );
               },
             ),
+
+            // 🛒 Carrito con contador igual al EventDetailScreen
             StreamBuilder<List<Map<String, dynamic>>>(
               stream: _cartService.getCartItems(),
               builder: (context, snapshot) {
                 final count = snapshot.data?.length ?? 0;
+
                 return Stack(
                   alignment: Alignment.center,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.shopping_cart),
+                      icon: const Icon(Icons.shopping_cart, size: 30, color: Colors.white),
                       onPressed: () {
                         Navigator.push(
                           context,
@@ -685,21 +702,23 @@ void _showAnnouncementCarousel(List<Map<String, dynamic>> announcements) {
                         );
                       },
                     ),
+
                     if (count > 0)
                       Positioned(
-                        right: 8,
-                        top: 8,
+                        right: 6,
+                        top: 12,
                         child: Container(
-                          padding: const EdgeInsets.all(4),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.error,
-                            shape: BoxShape.circle,
+                            color: Colors.redAccent,
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            "$count",
-                            style: TextStyle(
-                              color: theme.colorScheme.onError,
-                              fontSize: 12,
+                            "$count", // 🔥 AQUÍ VUELVE EL NÚMERO
+                            style: const TextStyle(
+                              color: Colors.white, // 🔥 número blanco
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),

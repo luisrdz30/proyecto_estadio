@@ -30,42 +30,60 @@ class _AdminFacturasScreenState extends State<AdminFacturasScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final snapshot = await FirebaseFirestore.instance
+      // 🔥 Determinar si el usuario está usando filtros manuales
+      bool usandoFiltrosManual =
+          _cedulaController.text.trim().isNotEmpty ||
+          _fechaInicio != null ||
+          _fechaFin != null;
+
+      // 🔥 Si no usa filtros → cargar solo la última semana
+      DateTime fechaLimite = DateTime.now().subtract(const Duration(days: 7));
+
+      Query query = FirebaseFirestore.instance
           .collection('facturas')
-          .orderBy('createdAt', descending: true)
-          .get();
+          .orderBy('createdAt', descending: true);
 
-      // Filtrar por cédula localmente (evita errores en Firestore)
+      if (!usandoFiltrosManual) {
+        query = query.where('createdAt', isGreaterThanOrEqualTo: fechaLimite);
+      }
+
+      final snapshot = await query.get();
+
       final buscarCedula = _cedulaController.text.trim();
-
-      final docsFiltrados = snapshot.docs.where((doc) {
-        if (buscarCedula.isEmpty) return true;
-
-        final data = doc.data();
-        return (data['idNumber']?.toString() ?? "").contains(buscarCedula);
-      }).toList();
-
       final List<Map<String, dynamic>> loaded = [];
 
-      for (final doc in docsFiltrados) {
-        final data = doc.data();
+      for (final doc in snapshot.docs) {
+        // 🔥 Cast seguro del documento (Firestore ahora devuelve Object?)
+        final Map<String, dynamic>? data =
+            doc.data() as Map<String, dynamic>?;
 
+        if (data == null) continue;
+
+        // 🔍 Filtro por cédula
+        if (buscarCedula.isNotEmpty) {
+          final id = data['idNumber']?.toString() ?? "";
+          if (!id.contains(buscarCedula)) continue;
+        }
+
+        // 🕒 Convertir fecha
         final createdAt = data['createdAt'] is Timestamp
             ? (data['createdAt'] as Timestamp).toDate()
             : null;
 
-        // 🔸 Filtro de fechas
+        // 📅 Filtros de fecha manuales
         if (_fechaInicio != null &&
             createdAt != null &&
             createdAt.isBefore(_fechaInicio!)) {
           continue;
         }
+
         if (_fechaFin != null &&
             createdAt != null &&
             createdAt.isAfter(_fechaFin!)) {
           continue;
         }
 
+        // 📌 Agregar factura al listado
         loaded.add({
           'id': doc.id,
           'userName': data['userName'] ?? 'Cliente sin nombre',
@@ -93,6 +111,7 @@ class _AdminFacturasScreenState extends State<AdminFacturasScreen> {
     }
   }
 
+  
   Future<void> _generatePDF(Map<String, dynamic> factura) async {
   final pdf = pw.Document();
 
@@ -424,14 +443,21 @@ class _AdminFacturasScreenState extends State<AdminFacturasScreen> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _facturas.isEmpty
-                      ? Center(
-                          child: Text(
-                            "No hay facturas que coincidan con los filtros.",
-                            style: TextStyle(
-                              color: theme.colorScheme.onSurface.withOpacity(0.6),
-                            ),
+                    ? Center(
+                        child: Text(
+                          // 🔥 Si NO hay filtros → mostrar mensaje especial
+                          (_cedulaController.text.trim().isEmpty &&
+                                  _fechaInicio == null &&
+                                  _fechaFin == null)
+                              ? "No se han emitido facturas en la última semana."
+                              : "No hay facturas que coincidan con los filtros.",
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
                           ),
-                        )
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+
                       : ListView.separated(
                           itemCount: _facturas.length,
                           separatorBuilder: (_, __) => const Divider(),

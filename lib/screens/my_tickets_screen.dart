@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:flutter/rendering.dart';
 import '../theme_sync.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class MyTicketsScreen extends StatefulWidget {
   const MyTicketsScreen({super.key});
@@ -20,6 +21,21 @@ class MyTicketsScreen extends StatefulWidget {
 class _MyTicketsScreenState extends State<MyTicketsScreen> {
   final Map<String, GlobalKey> _qrKeys = {};
   bool _showUpcoming = true;
+
+  // 🔥 NUEVO → Detectar internet real
+  bool _hasConnection = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 🔥 CHEQUEO REAL DE INTERNET
+    Connectivity().onConnectivityChanged.listen((result) {
+      setState(() {
+        _hasConnection = (result != ConnectivityResult.none);
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,37 +70,22 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
           children: [
             const SizedBox(height: 8),
 
-            // 🔥 BARRA DE AVISO OFFLINE
-            StreamBuilder(
-              stream: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(uid)
-                  .collection('tickets')
-                  .snapshots(includeMetadataChanges: true),
-              builder: (context, snapshot) {
-                final offline = snapshot.hasData &&
-                    snapshot.data!.metadata.isFromCache &&
-                    !snapshot.data!.metadata.hasPendingWrites;
-
-                if (offline) {
-                  return Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    color: Colors.orange.withOpacity(0.2),
-                    child: Center(
-                      child: Text(
-                        "Modo sin conexión: solo puedes ver tus entradas",
-                        style: TextStyle(
-                          color: Colors.orange.shade800,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+            // 🔥 ALERTA SOLO SI REALMENTE NO HAY INTERNET
+            if (!_hasConnection)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                color: Colors.orange.withOpacity(0.2),
+                child: Center(
+                  child: Text(
+                    "Modo sin conexión: solo puedes ver tus entradas",
+                    style: TextStyle(
+                      color: Colors.orange.shade800,
+                      fontWeight: FontWeight.bold,
                     ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
+                  ),
+                ),
+              ),
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -119,7 +120,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                     .doc(uid)
                     .collection('tickets')
                     .orderBy('eventDateTime', descending: !_showUpcoming)
-                    .snapshots(includeMetadataChanges: true), // 🔥 importante
+                    .snapshots(includeMetadataChanges: true),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
                     return Center(
@@ -129,8 +130,6 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                       ),
                     );
                   }
-
-                  final isFromCache = snapshot.data!.metadata.isFromCache;
 
                   final now = DateTime.now();
                   final allTickets = snapshot.data!.docs;
@@ -232,7 +231,6 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
 
                                       _qrKeys[qrCode] = GlobalKey();
 
-                                      // 🔥 Guardar QR local
                                       WidgetsBinding.instance
                                           .addPostFrameCallback((_) {
                                         _saveQrToLocal(qrCode);
@@ -274,7 +272,6 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                                                   ),
                                                 const SizedBox(height: 10),
 
-                                                // 🔥 QR desde local o desde generador
                                                 FutureBuilder<File?>(
                                                   future: _loadLocalQr(qrCode),
                                                   builder: (context, snap) {

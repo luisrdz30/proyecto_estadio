@@ -58,69 +58,130 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     required Color color,
   }) async {
     final theme = ThemeSync.currentTheme;
+
     await showDialog(
       context: context,
-      barrierDismissible: true,
-      builder: (context) => Theme(
-        data: theme,
-        child: Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: AnimatedScale(
-              duration: const Duration(milliseconds: 250),
-              scale: 1.05,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Icon(Icons.close,
-                          color: theme.colorScheme.onSurface, size: 22),
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Icon(icon, color: color, size: 52),
-                  const SizedBox(height: 12),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                      color: color,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    message,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      height: 1.4,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: color.withOpacity(0.85),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+      barrierDismissible: true, // 🔥 Cerrar tocando fuera
+      builder: (context) {
+        return Theme(
+          data: theme,
+          child: Dialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: AnimatedScale(
+                duration: const Duration(milliseconds: 250),
+                scale: 1.05,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // ❌ Botón cerrar
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Icon(
+                          Icons.close,
+                          color: theme.colorScheme.onSurface,
+                          size: 22,
+                        ),
                       ),
                     ),
-                    child: const Text("Cerrar"),
-                  ),
-                ],
+
+                    const SizedBox(height: 5),
+                    Icon(icon, color: color, size: 52),
+
+                    const SizedBox(height: 12),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        color: color,
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        height: 1.4,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ⭐ SOLO mostrar estos 2 botones si es el popup de "Añadido"
+                    if (title == "Añadido") ...[
+                      // 🔵 Botón SEGUIR COMPRANDO
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context); // cerrar popup
+                            Navigator.pop(context); // volver al HomeScreen
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text("Seguir comprando"),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // 🔵 Botón IR AL CARRITO
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context); // cerrar popup
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const CartScreen()),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text("Ir al carrito"),
+                        ),
+                      ),
+                    ],
+
+                    // 🔥 Caso general: solo botón CERRAR (para popups como "Atención")
+                    if (title != "Añadido") ...[
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: color.withOpacity(0.85),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text("Cerrar"),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -136,28 +197,66 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
+          toolbarHeight: 75, // 🔥 centra todo verticalmente, recomendado
           title: Text(event.title),
           backgroundColor: theme.colorScheme.primary,
           foregroundColor: theme.colorScheme.onPrimary,
+          centerTitle: true, // Opcional si quieres el título centrado
           actions: [
             IconButton(
               icon: Icon(
                 _isFavorite ? Icons.favorite : Icons.favorite_border,
                 color: _isFavorite ? Colors.redAccent : Colors.white,
+                size: 30,
               ),
               onPressed: _toggleFavorite,
             ),
-            IconButton(
-              icon: const Icon(Icons.shopping_cart),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const CartScreen()),
+
+            StreamBuilder<List<Map<String, dynamic>>>(
+              stream: _cartService.getCartItems(),
+              builder: (context, snapshot) {
+                final count = snapshot.data?.length ?? 0;
+
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.shopping_cart, size: 30),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const CartScreen()),
+                        );
+                      },
+                    ),
+                    if (count > 0)
+                      Positioned(
+                        right: 6,
+                        top: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.error,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            "$count",
+                            style: TextStyle(
+                              color: theme.colorScheme.onError,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 );
               },
             ),
           ],
         ),
+
+
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(

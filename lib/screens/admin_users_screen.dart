@@ -13,11 +13,8 @@ class AdminUsersScreen extends StatefulWidget {
 class _AdminUsersScreenState extends State<AdminUsersScreen> {
   bool _isLoading = false;
 
-  List<Map<String, dynamic>> _users = [];
   List<Map<String, dynamic>> _filteredUsers = [];
-
   String _searchQuery = "";
-  String _filterRole = "Todos";
 
   Map<String, dynamic>? currentUserData;
   String? currentUid;
@@ -25,7 +22,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUsers();
     _loadCurrentUser();
   }
 
@@ -53,60 +49,57 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     }
   }
 
-  Future<void> _loadUsers() async {
+  // 🔍 Buscar solo cuando el usuario escribe algo (coincidencia exacta)
+  Future<void> _searchUser() async {
+    final query = _searchQuery.trim();
+
+    // Si está vacío, no mostrar nada
+    if (query.isEmpty) {
+      setState(() => _filteredUsers = []);
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      final snapshot = await FirebaseFirestore.instance.collection('users').get();
-      final List<Map<String, dynamic>> loadedUsers = [];
+      // Traer solo los IDs (info personal se lee después)
+      final snap = await FirebaseFirestore.instance.collection('users').get();
+      List<Map<String, dynamic>> results = [];
 
-      for (final doc in snapshot.docs) {
-        final userData = await FirebaseFirestore.instance
+      for (final doc in snap.docs) {
+        final info = await FirebaseFirestore.instance
             .collection('users')
             .doc(doc.id)
             .collection('personalData')
             .doc('info')
             .get();
 
-        final data = userData.data() ?? {};
-        loadedUsers.add({
-          'id': doc.id,
-          'name': data['name'] ?? 'Sin nombre',
-          'email': data['email'] ?? '—',
-          'userType': data['userType'] ?? 'normal',
-        });
+        final data = info.data();
+        if (data == null) continue;
+
+        final name = data['name']?.toString().trim().toLowerCase() ?? "";
+        final email = data['email']?.toString().trim().toLowerCase() ?? "";
+        final idNumber = data['idNumber']?.toString().trim().toLowerCase() ?? "";
+        final q = query.toLowerCase();
+
+        // 🔥 Coincidencia exacta
+        if (name == q || email == q || idNumber == q) {
+          results.add({
+            'id': doc.id,
+            'name': data['name'] ?? 'Sin nombre',
+            'email': data['email'] ?? '—',
+            'userType': data['userType'] ?? 'normal',
+          });
+        }
       }
 
-      setState(() {
-        _users = loadedUsers;
-        _applyFilters();
-      });
+      setState(() => _filteredUsers = results);
+
     } catch (e) {
-      debugPrint("⚠️ Error cargando usuarios: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Error al cargar usuarios: $e"),
-          backgroundColor: ThemeSync.currentTheme.colorScheme.error,
-        ),
-      );
+      debugPrint("❌ Error buscando usuario: $e");
     } finally {
       setState(() => _isLoading = false);
     }
-  }
-
-  void _applyFilters() {
-    _filteredUsers = _users.where((u) {
-      final matchSearch =
-          u['name'].toLowerCase().contains(_searchQuery) ||
-              u['email'].toLowerCase().contains(_searchQuery);
-
-      final matchRole = (_filterRole == "Todos") ||
-          (u['userType'].toLowerCase() == _filterRole.toLowerCase());
-
-      return matchSearch && matchRole;
-    }).toList();
-
-    setState(() {});
   }
 
   Future<int> _countAdmins() async {
@@ -168,8 +161,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           ),
           content: Text(
             "¿Seguro que deseas cambiar el rol de este usuario?\n\n"
-                "• Actual: ${user['userType'].toUpperCase()}\n"
-                "• Nuevo: ${newRole.toUpperCase()}",
+            "• Actual: ${user['userType'].toUpperCase()}\n"
+            "• Nuevo: ${newRole.toUpperCase()}",
             style: const TextStyle(fontSize: 16),
           ),
           actions: [
@@ -196,8 +189,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           .doc('info')
           .update({'userType': newRole});
 
-      await _loadUsers();
       await _loadCurrentUser();
+      _searchUser(); // refrescar resultados
     } catch (e) {
       debugPrint("❌ Error cambiando rol: $e");
     }
@@ -237,13 +230,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                     color: theme.colorScheme.primary,
                     width: 2.2,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
                 ),
                 child: Row(
                   children: [
@@ -294,39 +280,17 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             /// BUSCAR
             TextField(
               onChanged: (value) {
-                _searchQuery = value.trim().toLowerCase();
-                _applyFilters();
+                _searchQuery = value.trim();
+                _searchUser();
               },
               decoration: InputDecoration(
-                hintText: "Buscar por nombre o correo...",
+                hintText: "Buscar por nombre, correo o cédula",
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: theme.colorScheme.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            /// FILTRO POR ROL
-            DropdownButtonFormField<String>(
-              initialValue: _filterRole,
-              items: const [
-                DropdownMenuItem(value: "Todos", child: Text("Todos")),
-                DropdownMenuItem(value: "admin", child: Text("Solo Admin")),
-                DropdownMenuItem(value: "normal", child: Text("Solo Normal")),
-              ],
-              onChanged: (v) {
-                _filterRole = v!;
-                _applyFilters();
-              },
-              decoration: InputDecoration(
-                labelText: "Filtrar por rol",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
@@ -339,10 +303,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
               Expanded(
                 child: Center(
                   child: Text(
-                    "No hay usuarios para mostrar",
+                    _searchQuery.isEmpty
+                        ? "Ingresa un valor exacto para buscar un usuario."
+                        : "No existe ningún usuario con esos datos.",
                     style: TextStyle(
                       color: theme.colorScheme.onSurface.withOpacity(0.6),
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               )
@@ -353,7 +320,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                   separatorBuilder: (_, __) => const Divider(height: 16),
                   itemBuilder: (context, index) {
                     final user = _filteredUsers[index];
-
                     final isCurrent = user['id'] == currentUid;
 
                     return Container(
@@ -378,7 +344,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         subtitle: Text(user['email']),
-
                         trailing: isCurrent
                             ? null
                             : Chip(
@@ -391,31 +356,16 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                             ),
                           ),
                           backgroundColor:
-                          user['userType'] == 'admin' ? Colors.teal : theme.colorScheme.primary,
+                          user['userType'] == 'admin'
+                              ? Colors.teal
+                              : theme.colorScheme.primary,
                         ),
-
                         onTap: () => _changeUserRole(user),
                       ),
                     );
                   },
                 ),
               ),
-
-            const SizedBox(height: 16),
-
-            ElevatedButton.icon(
-              onPressed: _loadUsers,
-              icon: const Icon(Icons.refresh),
-              label: const Text("Actualizar lista"),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
           ],
         ),
       ),
