@@ -51,6 +51,31 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     setState(() => _isFavorite = !_isFavorite);
   }
 
+  void _openImageFullscreen(BuildContext context, Event event) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            title: const Text("Mapa del estadio"),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              minScale: 0.8,
+              maxScale: 4.0,
+              child: event.imageEstadio.isNotEmpty
+                  ? Image.network(event.imageEstadio)
+                  : Image.asset('assets/images/estadio_asientos.png'),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _showPopup({
     required String title,
     required String message,
@@ -122,7 +147,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () {
-                            Navigator.pop(context); // cerrar popup
+                            Navigator.pop(context); // cerrar popuap
                             Navigator.pop(context); // volver al HomeScreen
                           },
                           style: ElevatedButton.styleFrom(
@@ -198,7 +223,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
           toolbarHeight: 75, // 🔥 centra todo verticalmente, recomendado
-          title: Text(event.title),
+          title: Text(
+            event.title,
+            style: const TextStyle(
+              fontSize: 22, // 👈 aquí aumentas el tamaño
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           backgroundColor: theme.colorScheme.primary,
           foregroundColor: theme.colorScheme.onPrimary,
           centerTitle: true, // Opcional si quieres el título centrado
@@ -305,6 +336,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               Text(
                 event.title,
                 style: theme.textTheme.headlineSmall?.copyWith(
+                  fontSize: 26, // 👈 AQUÍ se hace más grande
                   fontWeight: FontWeight.bold,
                   color: theme.colorScheme.onSurface,
                 ),
@@ -360,12 +392,46 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/images/estadio_asientos.png',
-                  width: double.infinity,
-                  fit: BoxFit.cover,
+                child: Stack(
+                  children: [
+                    AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: Builder(
+                        builder: (context) {
+                          final imageUrl = event.imageEstadio;
+
+                          if (imageUrl.isNotEmpty) {
+                            return Image.network(
+                              imageUrl,
+                              fit: BoxFit.contain,
+                            );
+                          }
+
+                          return Image.asset(
+                            'assets/images/estadio_asientos.png',
+                            fit: BoxFit.contain,
+                          );
+                        },
+                      ),
+                    ),
+
+                    // 🔍 Botón para ampliar
+                    Positioned(
+                      right: 10,
+                      bottom: 10,
+                      child: FloatingActionButton(
+                        mini: true,
+                        backgroundColor: Colors.black.withOpacity(0.6),
+                        onPressed: () {
+                          _openImageFullscreen(context, event);
+                        },
+                        child: const Icon(Icons.zoom_out_map, color: Colors.white),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+
 
               const SizedBox(height: 24),
 

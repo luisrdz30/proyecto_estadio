@@ -478,12 +478,14 @@ void _showAnnouncementCarousel(List<Map<String, dynamic>> announcements) {
       eventDate: data['eventDate']?.toDate(),
       description: data['description'] ?? '',
       image: data['image'] ?? '',
+      imageEstadio: data['image_estadio'] ?? '', // 👈 ESTO FALTABA
       zones: zones,
       capacity: (data['capacity'] ?? 0).toInt(),
       sold: (data['sold'] ?? 0).toInt(),
       isActive: data['isActive'] ?? true,
       endDateTime: data['endDateTime']?.toDate(),
     );
+
 
     Navigator.push(
       context,

@@ -11,6 +11,7 @@ class Event {
   final DateTime? eventDate;
   final String description;
   final String image;
+  final String imageEstadio; // 👈 nuevo campo
   final List<Zone> zones;
 
   // 🔹 Campos adicionales para control de disponibilidad
@@ -29,6 +30,7 @@ class Event {
     this.eventDate,
     required this.description,
     required this.image,
+    required this.imageEstadio, // 👈 aquí está bien
     required this.zones,
     this.capacity = 0,
     this.sold = 0,
@@ -37,7 +39,7 @@ class Event {
   });
 
   // ✅ Constructor desde Firestore
-  factory Event.fromFirestore(dynamic doc) {
+  factory Event.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
 
     final List<Zone> zones = (data['zones'] as List<dynamic>?)
@@ -61,6 +63,7 @@ class Event {
           : null,
       description: data['description'] ?? '',
       image: data['image'] ?? '',
+      imageEstadio: data['image_estadio'] ?? '', // ✅ CORRECTO
       zones: zones,
       capacity: (data['capacity'] ?? 0).toInt(),
       sold: (data['sold'] ?? 0).toInt(),
@@ -82,6 +85,7 @@ class Event {
       'eventDate': eventDate,
       'description': description,
       'image': image,
+      'image_estadio': imageEstadio, // 👈 IMPORTANTE guardarlo
       'zones': zones.map((z) => z.toMap()).toList(),
       'capacity': capacity,
       'sold': sold,

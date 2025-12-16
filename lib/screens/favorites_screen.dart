@@ -224,6 +224,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       final zones = _parseZones(data['zones']);
 
       final fullEvent = Event(
+        id: doc.id,
         title: data['title'] ?? fav.title,
         type: data['type'] ?? fav.type,
         date: data['date'] ?? fav.date,
@@ -234,8 +235,16 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             : null,
         description: data['description'] ?? fav.description,
         image: data['image'] ?? fav.image,
+        imageEstadio: data['image_estadio'] ?? '', // 👈 ESTO ARREGLA TODO
         zones: zones,
+        capacity: (data['capacity'] ?? 0).toInt(),
+        sold: (data['sold'] ?? 0).toInt(),
+        isActive: data['isActive'] ?? true,
+        endDateTime: data['endDateTime'] != null
+            ? (data['endDateTime'] as Timestamp).toDate()
+            : null,
       );
+
 
       if (context.mounted) {
         Navigator.push(

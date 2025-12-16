@@ -37,8 +37,13 @@ class _AdminEventoFormScreenState extends State<AdminEventoFormScreen> {
   DateTime? _selectedParsedDate;
   TimeOfDay? _selectedParsedTime;
 
-  // 🔥 Nuevas variables para imagen real
+  // 🔥 Imagen del evento (banner)
   File? _selectedImageFile;
+
+  // 🏟️ Imagen del estadio (NUEVO)
+  bool _useDefaultStadiumImage = true;
+  File? _selectedStadiumImageFile;
+  String _existingStadiumImageUrl = '';
 
   @override
   void initState() {
@@ -69,9 +74,14 @@ class _AdminEventoFormScreenState extends State<AdminEventoFormScreen> {
         _zones.add(Map<String, dynamic>.from(z));
       }
     }
+
+    // 🏟️ cargar imagen de estadio si existe (NUEVO)
+    _existingStadiumImageUrl = (data['image_estadio'] ?? '').toString();
+    _useDefaultStadiumImage = _existingStadiumImageUrl.trim().isEmpty;
+    _selectedStadiumImageFile = null;
   }
 
-  // ---------------- SUBIR IMAGEN ---------------------
+  // ---------------- SUBIR IMAGEN (EVENTO) ---------------------
 
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
@@ -84,6 +94,25 @@ class _AdminEventoFormScreenState extends State<AdminEventoFormScreen> {
 
   Future<String> _uploadImage(File image) async {
     final fileName = "events/${DateTime.now().millisecondsSinceEpoch}.jpg";
+    final ref = FirebaseStorage.instance.ref().child(fileName);
+
+    await ref.putFile(image);
+    return await ref.getDownloadURL();
+  }
+
+  // ---------------- SUBIR IMAGEN (ESTADIO) - NUEVO ---------------------
+
+  Future<void> _pickStadiumImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? picked = await picker.pickImage(source: ImageSource.gallery);
+
+    if (picked != null) {
+      setState(() => _selectedStadiumImageFile = File(picked.path));
+    }
+  }
+
+  Future<String> _uploadStadiumImage(File image) async {
+    final fileName = "stadiums/${DateTime.now().millisecondsSinceEpoch}.jpg";
     final ref = FirebaseStorage.instance.ref().child(fileName);
 
     await ref.putFile(image);
@@ -124,11 +153,24 @@ class _AdminEventoFormScreenState extends State<AdminEventoFormScreen> {
 
     setState(() => _loading = true);
 
-    // 🔥 1) Subir imagen si el admin seleccionó una
+    // 🔥 1) Subir imagen (EVENTO) si el admin seleccionó una
     String finalImageUrl = _image.text.trim(); // Si se está editando y ya existía URL
-
     if (_selectedImageFile != null) {
       finalImageUrl = await _uploadImage(_selectedImageFile!);
+    }
+
+    // 🏟️ 2) Subir imagen (ESTADIO) según checkbox (NUEVO)
+    String stadiumImageUrl = _existingStadiumImageUrl.trim();
+
+    if (_useDefaultStadiumImage) {
+      stadiumImageUrl = ''; // vacío = usar asset por defecto
+    } else {
+      // Si escogió una nueva, se sube y reemplaza
+      if (_selectedStadiumImageFile != null) {
+        stadiumImageUrl = await _uploadStadiumImage(_selectedStadiumImageFile!);
+      }
+      // Si no escogió nueva pero ya existía URL, se mantiene
+      // Si no existía, se queda vacío (y en detalle caerá al default)
     }
 
     // Construcción del DateTime final
@@ -150,7 +192,8 @@ class _AdminEventoFormScreenState extends State<AdminEventoFormScreen> {
       'date': _date.text.trim(),
       'time': _time.text.trim(),
       'duration': _duration.text.trim(),
-      'image': finalImageUrl, // 🔥 URL de Firebase Storage
+      'image': finalImageUrl, // 🔥 URL de Firebase Storage (evento)
+      'image_estadio': stadiumImageUrl, // 🏟️ NUEVO
       'isActive': _isActive,
       'zones': _zones,
       'eventDate': Timestamp.fromDate(eventDate),
@@ -252,7 +295,6 @@ class _AdminEventoFormScreenState extends State<AdminEventoFormScreen> {
     );
 
     Navigator.pop(context); // Cierra el formulario
-
 
     setState(() => _loading = false);
   }
@@ -406,64 +448,165 @@ class _AdminEventoFormScreenState extends State<AdminEventoFormScreen> {
                   "Detalles del evento",
                   Column(
                     children: [
-                    // ---------------- DURACIÓN ----------------
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        DropdownButtonFormField<String>(
-                          initialValue: ["1h", "1h 30m", "2h", "2h 30m", "3h", "4h"]
-                                  .contains(_duration.text)
-                              ? _duration.text
-                              : "Otro",
-                          decoration: InputDecoration(
-                            labelText: "Duración",
-                            filled: true,
-                            fillColor: ThemeSync.currentTheme.colorScheme.surface.withOpacity(0.9),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          items: const [
-                            DropdownMenuItem(value: "1h", child: Text("1 hora")),
-                            DropdownMenuItem(value: "1h 30m", child: Text("1h 30m")),
-                            DropdownMenuItem(value: "2h", child: Text("2 horas")),
-                            DropdownMenuItem(value: "2h 30m", child: Text("2h 30m")),
-                            DropdownMenuItem(value: "3h", child: Text("3 horas")),
-                            DropdownMenuItem(value: "4h", child: Text("4 horas")),
-                            DropdownMenuItem(value: "Otro", child: Text("Otro")),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              if (value == "Otro") {
-                                _duration.text = "";
-                              } else {
-                                _duration.text = value!;
-                              }
-                            });
-                          },
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // Campo visible solo cuando es "Otro"
-                        if (!["1h", "1h 30m", "2h", "2h 30m", "3h", "4h"]
-                            .contains(_duration.text))
-                          TextFormField(
-                            controller: _duration,
+                      // ---------------- DURACIÓN ----------------
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          DropdownButtonFormField<String>(
+                            initialValue: ["1h", "1h 30m", "2h", "2h 30m", "3h", "4h"]
+                                    .contains(_duration.text)
+                                ? _duration.text
+                                : "Otro",
                             decoration: InputDecoration(
-                              labelText: "Duración personalizada",
-                              hintText: "Ej: 4h, 1h 45m, 90m...",
+                              labelText: "Duración",
                               filled: true,
                               fillColor: ThemeSync.currentTheme.colorScheme.surface.withOpacity(0.9),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
+                            items: const [
+                              DropdownMenuItem(value: "1h", child: Text("1 hora")),
+                              DropdownMenuItem(value: "1h 30m", child: Text("1h 30m")),
+                              DropdownMenuItem(value: "2h", child: Text("2 horas")),
+                              DropdownMenuItem(value: "2h 30m", child: Text("2h 30m")),
+                              DropdownMenuItem(value: "3h", child: Text("3 horas")),
+                              DropdownMenuItem(value: "4h", child: Text("4 horas")),
+                              DropdownMenuItem(value: "Otro", child: Text("Otro")),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                if (value == "Otro") {
+                                  _duration.text = "";
+                                } else {
+                                  _duration.text = value!;
+                                }
+                              });
+                            },
                           ),
-                      ],
-                    ),
 
-                      // 🔥 NUEVA SECCIÓN DE IMAGEN
+                          const SizedBox(height: 12),
+
+                          // Campo visible solo cuando es "Otro"
+                          if (!["1h", "1h 30m", "2h", "2h 30m", "3h", "4h"]
+                              .contains(_duration.text))
+                            TextFormField(
+                              controller: _duration,
+                              decoration: InputDecoration(
+                                labelText: "Duración personalizada",
+                                hintText: "Ej: 4h, 1h 45m, 90m...",
+                                filled: true,
+                                fillColor: ThemeSync.currentTheme.colorScheme.surface.withOpacity(0.9),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // 🏟️ NUEVA SECCIÓN: IMAGEN DEL ESTADIO (con checkbox) ✅
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Imagen del estadio",
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+
+                          // Preview según checkbox
+                          if (_useDefaultStadiumImage)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.asset(
+                                'assets/images/estadio_asientos.png',
+                                height: 180,
+                                width: double.infinity,
+                                fit: BoxFit.contain,
+                              ),
+                            )
+                          else if (_selectedStadiumImageFile != null)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.file(
+                                _selectedStadiumImageFile!,
+                                height: 180,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          else if (_existingStadiumImageUrl.trim().isNotEmpty)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                _existingStadiumImageUrl.trim(),
+                                height: 180,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Image.asset(
+                                  'assets/images/estadio_asientos.png',
+                                  height: 180,
+                                  width: double.infinity,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            )
+                          else
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.asset(
+                                'assets/images/estadio_asientos.png',
+                                height: 180,
+                                width: double.infinity,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+
+                          const SizedBox(height: 12),
+
+                          CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
+                              "Usar imagen por defecto",
+                              style: TextStyle(color: theme.colorScheme.onSurface),
+                            ),
+                            value: _useDefaultStadiumImage,
+                            onChanged: (v) {
+                              setState(() {
+                                _useDefaultStadiumImage = v ?? true;
+
+                                // Si vuelve a default, borramos selección local
+                                if (_useDefaultStadiumImage) {
+                                  _selectedStadiumImageFile = null;
+                                }
+                              });
+                            },
+                          ),
+
+                          // Botón SOLO cuando NO usa default
+                          if (!_useDefaultStadiumImage)
+                            ElevatedButton.icon(
+                              onPressed: _pickStadiumImage,
+                              icon: const Icon(Icons.image),
+                              label: const Text("Seleccionar imagen del estadio"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.colorScheme.primary,
+                                foregroundColor: theme.colorScheme.onPrimary,
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      // 🔥 SECCIÓN ORIGINAL: IMAGEN DEL EVENTO (NO TOCADA, solo baja un poco)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

@@ -55,12 +55,14 @@ class FirestoreService {
           eventDate: eventDate,
           description: data['description'] ?? '',
           image: data['image'] ?? '',
+          imageEstadio: data['image_estadio'] ?? '', // 👈 AQUÍ ESTÁ LA CLAVE
           zones: zones,
           capacity: (data['capacity'] ?? 0).toInt(),
           sold: (data['sold'] ?? 0).toInt(),
           isActive: (data['isActive'] ?? true) == true,
           endDateTime: endDateTime,
         );
+
 
         return event;
       }).toList();
