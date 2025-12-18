@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme_sync.dart';
+import 'login_screen.dart';
+
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -30,7 +32,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _hasUpperCase(String s) => s.contains(RegExp(r'[A-Z]'));
   bool _hasLowerCase(String s) => s.contains(RegExp(r'[a-z]'));
   bool _hasNumber(String s) => s.contains(RegExp(r'[0-9]'));
-  bool _hasSpecialChar(String s) => s.contains(RegExp(r'[!@#\$%^&*(),.?":{}|<>]'));
+  bool _hasSpecialChar(String s) =>
+      s.contains(RegExp(r'[!@#\$%^&*(),.?":{}|<>]'));
   bool _isMinLength(String s) => s.length >= 8;
 
   bool _isPasswordValid(String s) {
@@ -50,11 +53,99 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Text(
           text,
           style: TextStyle(
-              color: ok ? Colors.green : Colors.red,
-              fontSize: 14,
-              fontWeight: FontWeight.w500),
+            color: ok ? Colors.green : Colors.red,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
+    );
+  }
+
+  // ──────────────────────────────────────────────
+  // POPUP DE VERIFICACIÓN
+  // ──────────────────────────────────────────────
+  Future<void> _showVerificationPopup() async {
+    final theme = ThemeSync.currentTheme;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Theme(
+          data: theme,
+          child: Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.mark_email_read_rounded,
+                    size: 64,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    "Verifica tu correo",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    "Hemos enviado un correo de verificación a tu email.\n\nRevisa tu bandeja de entrada o la carpeta de spam antes de iniciar sesión.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.4,
+                      color: theme.colorScheme.onSurface.withOpacity(0.85),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () async {
+                        await _auth.signOut();
+
+                        if (!context.mounted) return;
+
+                        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          (route) => false,
+                        );
+                      },
+                      child: const Text(
+                        "Ir al inicio de sesión",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -67,13 +158,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final password = _passwordController.text.trim();
     final confirm = _confirmController.text.trim();
 
-    if (username.isEmpty || email.isEmpty || password.isEmpty || confirm.isEmpty) {
+    if (username.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirm.isEmpty) {
       setState(() => _errorMessage = "Por favor completa todos los campos.");
       return;
     }
 
     if (!_isPasswordValid(password)) {
-      setState(() => _errorMessage = "La contraseña no cumple las políticas de seguridad.");
+      setState(() =>
+          _errorMessage = "La contraseña no cumple las políticas de seguridad.");
       return;
     }
 
@@ -96,7 +191,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final user = userCredential.user;
 
       if (user != null) {
-        // Guardar datos en users/{uid}
         await _db.collection('users').doc(user.uid).set({
           'username': username,
           'email': email,
@@ -104,7 +198,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'userType': 'normal',
         });
 
-        // Crear subcarpeta personalData/info
         await _db
             .collection('users')
             .doc(user.uid)
@@ -122,23 +215,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'createdAt': FieldValue.serverTimestamp(),
         });
 
-        // Enviar verificación
         if (!user.emailVerified) {
           await user.sendEmailVerification();
         }
 
-        final theme = ThemeSync.currentTheme;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-              "Cuenta creada. Hemos enviado un correo de verificación. Revisa tu bandeja o spam.",
-            ),
-            backgroundColor: theme.colorScheme.primary,
-          ),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+        }
 
-        await _auth.signOut();
-        if (mounted) Navigator.pop(context);
+        await _showVerificationPopup();
       }
     } on FirebaseAuthException catch (e) {
       setState(() {
@@ -184,14 +269,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 30),
 
-              // Nombre de usuario
               TextField(
                 controller: _usernameController,
                 decoration: InputDecoration(
                   labelText: "Nombre de usuario",
-                  prefixIcon: Icon(Icons.person, color: theme.colorScheme.primary),
+                  prefixIcon:
+                      Icon(Icons.person, color: theme.colorScheme.primary),
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
+                  fillColor: theme.colorScheme.surfaceContainerHighest
+                      .withOpacity(0.1),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -199,14 +285,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Correo
               TextField(
                 controller: _emailController,
                 decoration: InputDecoration(
                   labelText: "Correo electrónico",
-                  prefixIcon: Icon(Icons.email, color: theme.colorScheme.primary),
+                  prefixIcon:
+                      Icon(Icons.email, color: theme.colorScheme.primary),
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
+                  fillColor: theme.colorScheme.surfaceContainerHighest
+                      .withOpacity(0.1),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -215,52 +302,51 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Contraseña
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
                 onChanged: (value) => setState(() {}),
                 decoration: InputDecoration(
                   labelText: "Contraseña",
-                  prefixIcon: Icon(Icons.lock, color: theme.colorScheme.primary),
+                  prefixIcon:
+                      Icon(Icons.lock, color: theme.colorScheme.primary),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                       color: theme.colorScheme.primary,
                     ),
-                    onPressed: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
+                    onPressed: () => setState(
+                        () => _obscurePassword = !_obscurePassword),
                   ),
                   filled: true,
-                  fillColor:
-                      theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
-
-                  // 🔥 Mostrar error si no cumple
+                  fillColor: theme.colorScheme.surfaceContainerHighest
+                      .withOpacity(0.1),
                   errorText: _passwordController.text.isEmpty
                       ? null
                       : (_isPasswordValid(_passwordController.text)
                           ? null
                           : "La contraseña no cumple la política de seguridad"),
-
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
 
-              // Requisitos de contraseña
               const SizedBox(height: 15),
               Text(
                 "Requisitos de la contraseña:",
                 style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                    fontSize: 16),
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                  fontSize: 16,
+                ),
               ),
               const SizedBox(height: 8),
 
-              _buildRequirement(
-                  "Al menos 8 caracteres", _isMinLength(_passwordController.text)),
+              _buildRequirement("Al menos 8 caracteres",
+                  _isMinLength(_passwordController.text)),
               _buildRequirement("Una letra mayúscula",
                   _hasUpperCase(_passwordController.text)),
               _buildRequirement("Una letra minúscula",
@@ -272,25 +358,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const SizedBox(height: 25),
 
-              // Confirmar contraseña
               TextField(
                 controller: _confirmController,
                 obscureText: _obscureConfirm,
                 decoration: InputDecoration(
                   labelText: "Confirmar contraseña",
-                  prefixIcon:
-                      Icon(Icons.lock_outline, color: theme.colorScheme.primary),
+                  prefixIcon: Icon(Icons.lock_outline,
+                      color: theme.colorScheme.primary),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                      _obscureConfirm
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                       color: theme.colorScheme.primary,
                     ),
-                    onPressed: () =>
-                        setState(() => _obscureConfirm = !_obscureConfirm),
+                    onPressed: () => setState(
+                        () => _obscureConfirm = !_obscureConfirm),
                   ),
                   filled: true,
-                  fillColor:
-                      theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
+                  fillColor: theme.colorScheme.surfaceContainerHighest
+                      .withOpacity(0.1),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -302,7 +389,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               if (_errorMessage != null)
                 Text(
                   _errorMessage!,
-                  style: TextStyle(color: theme.colorScheme.error, fontSize: 15),
+                  style: TextStyle(
+                      color: theme.colorScheme.error, fontSize: 15),
                 ),
 
               const SizedBox(height: 25),

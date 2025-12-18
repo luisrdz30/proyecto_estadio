@@ -18,6 +18,7 @@ import 'personal_data_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/zone.dart';
 
+
 // 🎨 Importamos los temas definidos en main.dart y el gestor global
 import '../main.dart' show lightTheme, darkTheme;
 import '../theme_manager.dart';
@@ -34,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final TextEditingController _searchController = TextEditingController();
   final CartService _cartService = CartService();
+  bool _announcementsShown = false;
 
   // 👇 Nuevo: Stream fijo para evitar que el teclado se cierre
   late final Stream<List<Event>> _eventsStream;
@@ -45,16 +47,23 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentPage = 0;
   static const int _eventsPerPage = 10;
 
+
   @override
   void initState() {
     super.initState();
+
     _loadEventTypes();
-
-    // 🔥 Stream fijo que NO se recrea en cada build
     _eventsStream = _firestoreService.getEvents();
-    _checkAnnouncements();
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_announcementsShown) {
+        _announcementsShown = true;
+        _checkAnnouncements();
+      }
+    });
   }
+
+
 
   Future<String> _getUsername() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -137,7 +146,10 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+
   void _checkAnnouncements() async {
+    if (!mounted) return;
+
     try {
       final query = await FirebaseFirestore.instance
           .collection('announcements')
@@ -149,17 +161,16 @@ class _HomeScreenState extends State<HomeScreen> {
       final announcements =
           query.docs.map((doc) => doc.data()).toList();
 
-      Future.delayed(Duration.zero, () {
-        if (announcements.length == 1) {
-          _showSingleAnnouncement(announcements.first);
-        } else {
-          _showAnnouncementCarousel(announcements);
-        }
-      });
+      if (announcements.length == 1) {
+        _showSingleAnnouncement(announcements.first);
+      } else {
+        _showAnnouncementCarousel(announcements);
+      }
     } catch (e) {
-      print("Error cargando anuncios: $e");
+      debugPrint("Error cargando anuncios: $e");
     }
   }
+
 void _showSingleAnnouncement(Map<String, dynamic> ann) {
   final theme = ThemeManager.isDarkMode.value ? darkTheme : lightTheme;
 

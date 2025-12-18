@@ -811,7 +811,7 @@ void _showMandatoryInvoicePopup(BuildContext context) {
         if (partes.length >= 4) {
           final dia = int.tryParse(partes[0]) ?? 1;
           final mes = meses[partes[2].toLowerCase()] ?? 1;
-          final anio = int.tryParse(partes[3]) ?? DateTime.now().year;
+          final anio = int.tryParse(partes.last) ?? DateTime.now().year;
 
           int hora = 0, minuto = 0;
           if (timeStr.contains(':')) {
